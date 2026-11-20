@@ -21,10 +21,10 @@ describe('admin account helpers', () => {
     const roles = [
       { slug: 'user', name: 'User' },
       { slug: 'operator', name: 'Operator TU' },
-      { slug: 'editor_sma', name: 'editor_sma' },
+      { slug: 'editor-sma', name: 'editor-sma' },
       { slug: 'admin', name: 'Admin' },
       { slug: 'bendahara', name: 'Bendahara' },
-      { slug: 'editor_smp', name: 'editor_smp' },
+      { slug: 'editor-smp', name: 'editor-smp' },
     ];
     expect(sortRoles(roles).map(roleLabel)).toEqual(['Administrator', 'Editor SMP', 'Editor SMA', 'Staf', 'Bendahara', 'Operator TU']);
   });

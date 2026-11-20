@@ -156,22 +156,22 @@ export const refusalText = (result: { code: string; message: string }) => REFUSA
 /** Role names as the school says them; roles made in Peran & izin keep the name they were given. */
 export const ROLE_LABEL: Record<string, string> = {
   admin: 'Administrator',
-  editor_yayasan: 'Editor Yayasan',
-  editor_smp: 'Editor SMP',
-  editor_sma: 'Editor SMA',
-  panitia_ppdb: 'Panitia PPDB',
+  'editor-yayasan': 'Editor Yayasan',
+  'editor-smp': 'Editor SMP',
+  'editor-sma': 'Editor SMA',
+  'panitia-ppdb': 'Panitia PPDB',
   user: 'Staf',
 };
 export const roleLabel = (role: Pick<Role, 'slug' | 'name'>) => ROLE_LABEL[role.slug] ?? role.name;
 const ROLE_NOTE: Record<string, string> = {
   admin: 'Semua izin, termasuk pengguna dan peran',
-  editor_yayasan: 'Isi situs Yayasan: profil, berita, galeri, dokumen',
-  editor_smp: 'Isi portal SMP IT Al Bashiroh',
-  editor_sma: 'Isi portal SMA IT Al Bashiroh',
-  panitia_ppdb: 'Data pendaftar PPDB dan ekspornya',
+  'editor-yayasan': 'Isi situs Yayasan: profil, berita, galeri, dokumen',
+  'editor-smp': 'Isi portal SMP IT Al Bashiroh',
+  'editor-sma': 'Isi portal SMA IT Al Bashiroh',
+  'panitia-ppdb': 'Data pendaftar PPDB dan ekspornya',
   user: 'Bisa masuk dan mengurus akunnya sendiri',
 };
-const ROLE_ORDER = ['admin', 'editor_yayasan', 'editor_smp', 'editor_sma', 'panitia_ppdb', 'user'];
+const ROLE_ORDER = ['admin', 'editor-yayasan', 'editor-smp', 'editor-sma', 'panitia-ppdb', 'user'];
 /** Administrator first, then the school's roles in a fixed order, then the rest by name. */
 export const sortRoles = <T extends Pick<Role, 'slug' | 'name'>>(roles: readonly T[]): T[] => {
   const rank = (role: T) => ROLE_ORDER.indexOf(role.slug) >>> 0;
