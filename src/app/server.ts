@@ -47,6 +47,7 @@ import {
 } from '../shared/database';
 import composeUsersServer from './bindings/users.server';
 import composeActivityServer, { createActivityRecorder } from './bindings/activity.server';
+import composeMediaServer from './bindings/media.server';
 import { healthRoutes } from '../features/health';
 
 const frontendBuildDirectory = resolve(process.cwd(), 'build', 'client');
@@ -76,7 +77,7 @@ function requestPath(context: { req: { url: string } }): RequestPath {
 }
 
 function isReservedPath(pathname: string): boolean {
-  return ['/api', '/health', '/ready'].some(
+  return ['/api', '/health', '/ready', '/media'].some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );
 }
@@ -250,6 +251,7 @@ app.route('/api/auth', createAuthRoutes(activity.declare('auth', AUTH_ACTIVITY),
 app.route('/api/roles', createAccessRoutes(activity.declare('roles', ROLES_ACTIVITY)));
 composeUsersServer(app, { activity });
 composeActivityServer(app);
+composeMediaServer(app, { activity });
 // Live updates for signed-in browsers; Auth decides who is listening and
 // whether they meet a topic's rule, as it does for every guarded route.
 app.get(
