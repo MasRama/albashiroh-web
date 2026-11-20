@@ -2,11 +2,11 @@
 
 ## Reporting a Vulnerability
 
-If you find a security vulnerability in Nara, please report it privately instead of opening a public issue.
+If you find a security vulnerability in the Al Bashiroh website or admin panel, please report it privately instead of opening a public issue. The site holds personal data of PPDB applicants, so please do not test against the live site with real-looking data or try to read other people's records.
 
 **Preferred:** GitHub private vulnerability reporting — go to the repository's **Security** tab and click **Report a vulnerability**.
 
-**Alternative:** email the maintainer directly. Allow up to 7 days for an initial response.
+**Alternative:** use the contact listed on the maintainer's GitHub profile, [@MasRama](https://github.com/MasRama). Allow up to 7 days for an initial response.
 
 Please include:
 
@@ -16,13 +16,13 @@ Please include:
 
 ## Scope
 
-In scope: the Nara codebase itself — auth, CSRF, rate limiting, input sanitization, asset serving, session handling, and dependency supply chain.
+In scope: this codebase — sign-in, roles, the admin panel, the PPDB form and its data, uploads and file serving, stored article HTML, CSRF, rate limiting, session handling, and the dependency supply chain.
 
 Out of scope: misconfiguration in deployments you control (e.g. missing TLS, open ports), or dependencies with their own published advisories (report those upstream).
 
 ## Disclosure
 
-We aim to confirm within 7 days and ship a fix as soon as practical. Please hold public disclosure until a fixed release is published.
+We aim to confirm within 7 days and ship a fix as soon as practical. Please hold public disclosure until the fix is deployed.
 
 ## Security model notes
 
