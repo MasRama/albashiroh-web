@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Hono } from 'hono';
@@ -114,7 +114,17 @@ describe('media library', () => {
     const downloaded = await app.request(docx.url);
     expect(downloaded.headers.get('content-disposition')).toBe('attachment; filename="jadwal-ujian.docx"');
 
-    expect((await app.request(`/media/${pdf.id}/other-name.pdf`)).status).toBe(404);
+    // A link copied before a rename still works: it moves to the current name.
+    const renamed = await app.request(`/api/media/${pdf.id}`, {
+      method: 'PATCH',
+      headers: { ...as(EDITOR), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'Brosur PPDB 2026.pdf', alt: '', revision: pdf.revision }),
+    });
+    expect(renamed.status).toBe(200);
+    const moved = await app.request(pdf.url);
+    expect(moved.status).toBe(301);
+    expect(moved.headers.get('location')).toBe(`/media/${pdf.id}/brosur-ppdb-2026.pdf`);
+    expect(moved.headers.get('cache-control')).toBe('public, max-age=3600');
     expect((await app.request(`/media/${pdf.id}/md.webp`)).status).toBe(404);
   });
 
@@ -189,6 +199,8 @@ describe('media library', () => {
     expect(removed.status).toBe(200);
     expect((await app.request(`/media/${item.id}/sm.webp`)).status).toBe(404);
     expect(await storage.get(`media/${item.id}/sm.webp`)).toBeUndefined();
+    // Nothing of it stays on disk, not even its folder.
+    await expect(stat(join(root, 'media', item.id))).rejects.toMatchObject({ code: 'ENOENT' });
     expect(reports.at(-1)).toMatchObject({ action: 'media.deleted', targetId: item.id });
   });
 

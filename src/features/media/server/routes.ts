@@ -5,6 +5,7 @@ import type { Context } from 'hono';
 import {
   FILE_MAX_BYTES,
   IMAGE_VARIANTS,
+  MEDIA_PUBLIC_PATH,
   mediaQuerySchema,
   mediaUpdateSchema,
   type ImageVariant,
@@ -150,6 +151,7 @@ export function createMediaRoutes(host: MediaServerHost) {
 }
 
 const IMMUTABLE = 'public, max-age=31536000, immutable';
+const extension = (file: string) => file.slice(file.lastIndexOf('.') + 1).toLowerCase();
 
 /**
  * Serves stored photos and documents to anyone at `/media/<id>/<file>`. An
@@ -174,7 +176,13 @@ export function createMediaFileRoutes(host: Pick<MediaServerHost, 'storage'>) {
       contentType = 'image/webp';
     } else {
       const name = downloadName(item.name);
-      if (file !== name) return context.notFound();
+      if (file !== name) {
+        // A link copied before a rename (same document, same extension) moves to the current name.
+        if (extension(file) !== extension(name)) return context.notFound();
+        // Cached for an hour only: the name may change again.
+        context.header('Cache-Control', 'public, max-age=3600');
+        return context.redirect(`${MEDIA_PUBLIC_PATH}/${id}/${name}`, 301);
+      }
       key = `media/${id}/original`;
       contentType = item.mimeType;
       headers['Content-Disposition'] = `${item.mimeType === 'application/pdf' ? 'inline' : 'attachment'}; filename="${name}"`;

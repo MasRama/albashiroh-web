@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
+import { mkdtemp, rm, stat, symlink, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -18,6 +18,29 @@ describe('local asset storage substrate', () => {
       expect(stored?.size).toBe(data.length);
       expect(await storage.delete('avatars/example.bin')).toBe(true);
       expect(await storage.get('avatars/example.bin')).toBeUndefined();
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('removes folders a delete leaves empty, never the root or a folder still in use', async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), 'nara-storage-'));
+    try {
+      const storage = createLocalAssetStorage({ root });
+      const put = (key: string) => storage.put({ key, data: Buffer.from('x'), contentType: 'application/octet-stream' });
+      await put('media/one/sm.webp');
+      await put('media/one/md.webp');
+      await put('media/two/sm.webp');
+
+      await storage.delete('media/one/sm.webp');
+      expect((await stat(path.join(root, 'media', 'one'))).isDirectory()).toBe(true);
+      await storage.delete('media/one/md.webp');
+      await expect(stat(path.join(root, 'media', 'one'))).rejects.toMatchObject({ code: 'ENOENT' });
+      expect((await stat(path.join(root, 'media'))).isDirectory()).toBe(true);
+
+      await storage.delete('media/two/sm.webp');
+      await expect(stat(path.join(root, 'media'))).rejects.toMatchObject({ code: 'ENOENT' });
+      expect((await stat(root)).isDirectory()).toBe(true);
     } finally {
       await rm(root, { recursive: true, force: true });
     }

@@ -12,7 +12,7 @@ export const AUTH = {
   MAX_SESSIONS_PER_USER: 10,
   /** last_seen_at is written at most once per interval per session. */
   SESSION_TOUCH_INTERVAL_MS: 5 * 60 * 1000,
-  TWO_FACTOR_ISSUER: 'Nara',
+  TWO_FACTOR_ISSUER: 'Al Bashiroh',
   TWO_FACTOR_CHALLENGE_TTL_MS: 5 * 60 * 1000,
   TWO_FACTOR_MAX_ATTEMPTS: 5,
   /** Failed sign-ins per normalized email or per IP before that dimension locks. */

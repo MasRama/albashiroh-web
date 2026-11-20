@@ -13,6 +13,7 @@ import {
 } from '../../../features/media/web';
 import { onServerEvent } from '../../../shared/realtime/browser';
 import { AbButton, AbCard, AbCopy, AbDialog, AbEmpty, AbField, AbNotice, AbPage, AbSearch, AbSpinner, dateTimeShort, showToast } from '../../../shared/ui';
+import { mergeStale } from '../../account';
 import { mediaClient } from '../../cms';
 
 /**
@@ -94,11 +95,16 @@ const open = ref<MediaItem | null>(null);
 const draft = reactive({ name: '', alt: '' });
 const nameError = ref<string>();
 const saving = ref(false);
+/** What someone else saved while this was open, shown under each field this draft still differs on. */
+const theirs = ref<{ name: string; alt: string } | null>(null);
 function show(item: MediaItem): void {
   open.value = item;
   Object.assign(draft, { name: item.name, alt: item.alt });
   nameError.value = undefined;
+  theirs.value = null;
 }
+const theirNote = (key: 'name' | 'alt') =>
+  theirs.value && theirs.value[key] !== draft[key] ? `Versi yang baru disimpan orang lain: ${theirs.value[key] || '(kosong)'}` : undefined;
 const address = computed(() => (open.value ? new URL(open.value.variants?.lg ?? open.value.url, window.location.origin).href : ''));
 
 async function save(): Promise<void> {
@@ -114,8 +120,12 @@ async function save(): Promise<void> {
     return;
   }
   if (result.code === 'STALE_REVISION' && result.current) {
-    // Someone else saved first: take their version as the new base and keep this draft.
-    open.value = result.current as MediaItem;
+    // Someone else saved first: take what they changed, keep what this draft changed, and show where the two differ.
+    const current = result.current as MediaItem;
+    const saved = { name: current.name, alt: current.alt };
+    Object.assign(draft, mergeStale({ name: open.value.name, alt: open.value.alt }, { ...draft }, saved));
+    theirs.value = saved;
+    open.value = current;
     showToast('Berkas ini baru diubah orang lain. Periksa lalu simpan lagi.', 'warn');
     return;
   }
@@ -200,12 +210,12 @@ async function remove(): Promise<void> {
         <img v-if="open.kind === 'image'" class="md-detail-preview" :src="imageUrl(open.id, 'lg')" :alt="open.alt" />
         <a v-else class="md-detail-doc" :href="open.url" target="_blank" rel="noopener"><FileText :size="40" />Buka dokumen</a>
         <form id="md-edit" class="md-detail-form" @submit.prevent="save">
-          <AbField v-model="draft.name" label="Nama" :error="nameError" :disabled="!canUpload" />
+          <AbField v-model="draft.name" label="Nama" :error="nameError" :hint="theirNote('name')" :disabled="!canUpload" />
           <AbField
             v-if="open.kind === 'image'"
             v-model="draft.alt"
             label="Keterangan gambar"
-            hint="Gambarkan isi foto dalam satu kalimat, untuk pembaca layar dan mesin pencari."
+            :hint="theirNote('alt') ?? 'Gambarkan isi foto dalam satu kalimat, untuk pembaca layar dan mesin pencari.'"
             multiline
             :rows="2"
             :disabled="!canUpload"
