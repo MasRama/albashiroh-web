@@ -115,7 +115,7 @@ async function send(token: string, retried = false): Promise<void> {
     return showFirstError();
   }
   if (result.code === 'ALREADY_REGISTERED') {
-    errors.value = { 'student.nisn': `NISN ini sudah terdaftar di ${LEVEL_LABEL[props.level]} tahun ini.` };
+    errors.value = { 'student.nisn': `NISN ini sudah terdaftar di ${LEVEL_LABEL[props.level]} tahun ajaran ini.` };
     notice.value = 'Calon siswa dengan NISN ini sudah terdaftar. Bila ada data yang salah, hubungi panitia lewat WhatsApp.';
     return showFirstError();
   }

@@ -75,6 +75,7 @@ async function register(overrides: Partial<ApplicationInput> = {}): Promise<Resp
 
 beforeEach(async () => {
   getDatabase().prepare('DELETE FROM ppdb_applications').run();
+  getDatabase().prepare('DELETE FROM ppdb_sequences').run();
   getDatabase().prepare('DELETE FROM ppdb_settings').run();
   reports.length = 0;
   clock = Date.parse('2026-11-20T03:00:00Z');
@@ -87,7 +88,7 @@ describe('the public registration form', () => {
     expect(first.status, await first.clone().text()).toBe(201);
     const { receipt } = await data<{ receipt: Receipt }>(first);
     expect(receipt).toEqual({
-      code: 'SMP-2026-0001',
+      code: 'SMP-2027-0001',
       level: 'smp',
       name: 'Ahmad Contoh',
       createdAt: clock,
@@ -96,21 +97,45 @@ describe('the public registration form', () => {
     });
 
     const second = await register({ student: { ...applicant().student, name: 'Fatimah Contoh', gender: 'P', nisn: '0012345679' } });
-    expect((await data<{ receipt: Receipt }>(second)).receipt.code).toBe('SMP-2026-0002');
+    expect((await data<{ receipt: Receipt }>(second)).receipt.code).toBe('SMP-2027-0002');
     const sma = await register({ level: 'sma', student: { ...applicant().student, birthDate: '2011-02-01', nisn: '0098765432' } });
-    expect((await data<{ receipt: Receipt }>(sma)).receipt).toMatchObject({ code: 'SMA-2026-0001', groupLink: '' });
+    expect((await data<{ receipt: Receipt }>(sma)).receipt).toMatchObject({ code: 'SMA-2027-0001', groupLink: '' });
 
-    const row = getDatabase().prepare("SELECT phone, data FROM ppdb_applications WHERE code = 'SMP-2026-0001'").get() as { phone: string; data: string };
+    const row = getDatabase().prepare("SELECT phone, data FROM ppdb_applications WHERE code = 'SMP-2027-0001'").get() as { phone: string; data: string };
     expect(row.phone).toBe('6281234567890');
     expect(JSON.parse(row.data)).not.toHaveProperty('token');
   });
 
-  it('refuses the same NISN twice for one level in a year, but takes it for the other level', async () => {
+  it('refuses the same NISN twice for one level in a season, but takes it for the other level', async () => {
     expect((await register()).status).toBe(201);
     const again = await register();
     expect(again.status).toBe(409);
     expect(await again.json()).toMatchObject({ code: 'ALREADY_REGISTERED' });
     expect((await register({ level: 'sma', student: { ...applicant().student, birthDate: '2011-02-01' } })).status).toBe(201);
+  });
+
+  it('numbers and checks repeats per season, so a season running past New Year keeps one numbering', async () => {
+    clock = Date.parse('2026-12-30T03:00:00Z');
+    expect((await data<{ receipt: Receipt }>(await register())).receipt.code).toBe('SMP-2027-0001');
+    clock = Date.parse('2027-01-05T03:00:00Z');
+    expect((await register()).status).toBe(409);
+    const january = await register({ student: { ...applicant().student, nisn: '0012345679' } });
+    expect((await data<{ receipt: Receipt }>(january)).receipt.code).toBe('SMP-2027-0002');
+
+    // With no season set, the calendar year in WIB counts: 31 Dec 18:00 UTC is already 1 Jan in Turen.
+    await settings({ academicYear: '' });
+    clock = Date.parse('2027-12-31T18:00:00Z') - MIN_FILL_MS - 30_000;
+    expect((await data<{ receipt: Receipt }>(await register({ student: { ...applicant().student, nisn: '0012345680' } }))).receipt.code).toBe('SMP-2028-0001');
+  });
+
+  it('never hands a deleted registration’s number to another child', async () => {
+    await register();
+    const second = await data<{ receipt: Receipt }>(await register({ student: { ...applicant().student, nisn: '0012345679' } }));
+    expect(second.receipt.code).toBe('SMP-2027-0002');
+    const { id } = getDatabase().prepare("SELECT id FROM ppdb_applications WHERE code = 'SMP-2027-0002'").get() as { id: string };
+    expect((await send(MANAGER, 'DELETE', `/applications/${id}`)).status).toBe(200);
+    const next = await register({ student: { ...applicant().student, nisn: '0012345680' } });
+    expect((await data<{ receipt: Receipt }>(next)).receipt.code).toBe('SMP-2027-0003');
   });
 
   it('names each field a person must fix', async () => {
@@ -168,7 +193,7 @@ describe('the committee', () => {
     expect((await send(null, 'GET', '/applications')).status).toBe(401);
 
     const smp = await data<ApplicationPage>(await send(READER, 'GET', '/applications?level=smp'));
-    expect(smp.items.map((item) => item.code)).toEqual(['SMP-2026-0002', 'SMP-2026-0001']);
+    expect(smp.items.map((item) => item.code)).toEqual(['SMP-2027-0002', 'SMP-2027-0001']);
     expect(smp.counts).toEqual({ smp: { baru: 2, diverifikasi: 0, diterima: 0, ditolak: 0 }, sma: { baru: 1, diverifikasi: 0, diterima: 0, ditolak: 0 } });
 
     const found = await data<ApplicationPage>(await send(READER, 'GET', '/applications?q=SMP%20Contoh%202'));
@@ -179,13 +204,13 @@ describe('the committee', () => {
     await seedThree();
     const [item] = (await data<ApplicationPage>(await send(READER, 'GET', '/applications?level=sma'))).items;
     const { application } = await data<{ application: Application }>(await send(READER, 'GET', `/applications/${item!.id}`));
-    expect(application).toMatchObject({ code: 'SMA-2026-0001', father: { nik: '3507000000000001' }, status: 'baru', revision: 1 });
+    expect(application).toMatchObject({ code: 'SMA-2027-0001', father: { nik: '3507000000000001' }, status: 'baru', revision: 1 });
 
     expect((await send(READER, 'PATCH', `/applications/${item!.id}`, { status: 'diterima', note: '', revision: 1 })).status).toBe(403);
     const saved = await send(MANAGER, 'PATCH', `/applications/${item!.id}`, { status: 'diterima', note: 'Berkas lengkap.', revision: 1 });
     expect((await data<{ application: Application }>(saved)).application).toMatchObject({ status: 'diterima', note: 'Berkas lengkap.', revision: 2 });
     expect((await send(MANAGER, 'PATCH', `/applications/${item!.id}`, { status: 'ditolak', note: '', revision: 1 })).status).toBe(409);
-    expect(reports.at(-1)).toMatchObject({ action: 'ppdb.reviewed', targetLabel: 'SMA-2026-0001' });
+    expect(reports.at(-1)).toMatchObject({ action: 'ppdb.reviewed', targetLabel: 'SMA-2027-0001' });
 
     expect((await send(READER, 'DELETE', `/applications/${item!.id}`)).status).toBe(403);
     expect((await send(MANAGER, 'DELETE', `/applications/${item!.id}`)).status).toBe(200);
@@ -202,7 +227,7 @@ describe('the committee', () => {
     expect(text.startsWith('﻿No. pendaftaran,Tanggal daftar,Jenjang,Status,Nama lengkap,')).toBe(true);
     const lines = text.trim().split('\r\n');
     expect(lines).toHaveLength(3);
-    expect(lines[1]).toContain('SMA-2026-0001,2026-11-20,SMA,Baru,Umar Contoh,Malang,2011-02-01,Laki-laki,0098765432,SMP Contoh 2,');
+    expect(lines[1]).toContain('SMA-2027-0001,2026-11-20,SMA,Baru,Umar Contoh,Malang,2011-02-01,Laki-laki,0098765432,SMP Contoh 2,');
     expect(lines[2]).toContain(`"'=HYPERLINK(""x"")"`);
     expect(reports.at(-1)).toMatchObject({ action: 'ppdb.exported', targetLabel: '2 pendaftar SMA', metadata: { format: 'csv', level: 'sma', count: 2 } });
   });
@@ -223,7 +248,11 @@ describe('the committee', () => {
   it('keeps the form settings to managers', async () => {
     expect((await send(READER, 'GET', '/settings')).status).toBe(403);
     const response = await send(MANAGER, 'PUT', '/settings', { settings: { open: true, groupLink: { smp: 'javascript:alert(1)', sma: '' } }, revision: 1 });
-    expect(response.status).toBe(422);
+    expect(response.status).toBe(422);    for (const academicYear of ['2027', '2027/2029', '27/28', 'Tahun 2027']) {
+      const refused = await send(MANAGER, 'PUT', '/settings', { settings: { open: true, academicYear }, revision: 1 });
+      expect(refused.status, academicYear).toBe(422);
+      expect(((await refused.json()) as { errors: Record<string, string[]> }).errors).toEqual({ 'settings.academicYear': ['Tulis dua tahun berurutan, seperti 2027/2028'] });
+    }
   });
 });
 

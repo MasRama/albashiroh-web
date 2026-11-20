@@ -129,11 +129,16 @@ Families register online on `/ppdb`: they pick SMP or SMA and fill in the
 student, both parents, the address and phone number, whether the student will
 board, and how the registration fee is paid (the fields of the school's
 earlier Tally form). The browser checks the form with the same rules as the
-server. A registration gets a number per level and year (`SMP-2026-0001`), and
-the same NISN cannot register twice for one level in a year. Spam is held off
-without a puzzle: a hidden field only scripts fill in, a signed form token that
-must be at least 5 seconds old and at most 12 hours, and at most
-`PPDB_SUBMIT_MAX` registrations (default 5) per address per hour.
+server. A registration gets a number per level and season, from the season's
+first year (`SMP-2027-0001` for 2027/2028, so a season that runs past New Year
+keeps one numbering); numbers only go up, so a deleted registration's number is
+never handed to another child. The same NISN cannot register twice for one
+level in a season. Spam is held off without a puzzle: a hidden field only
+scripts fill in, a signed form token that must be at least 5 seconds old and at
+most 12 hours, and per address per hour at most `PPDB_SUBMIT_MAX` accepted
+registrations (default 30; refused or repeated sends do not count, since
+families on the school's wifi share one address) and `PPDB_ATTEMPT_MAX` sends
+of any outcome (default 120).
 
 The form is closed until someone with `ppdb.manage` opens it in **PPDB →
 Pengaturan formulir**, where they also set the academic year and, per level,

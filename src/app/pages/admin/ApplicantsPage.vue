@@ -131,6 +131,7 @@ const emptyText = computed(() => {
         <span>Unduh {{ count(total, 'pendaftar') }} ({{ exportLabel }}{{ status ? `, ${STATUS_LABEL[status].toLowerCase()}` : '' }}):</span>
         <AbButton variant="outline" size="sm" :href="ppdbClient.exportUrl('xlsx', filter)"><Download :size="16" />Excel</AbButton>
         <AbButton variant="outline" size="sm" :href="ppdbClient.exportUrl('csv', filter)"><Download :size="16" />CSV</AbButton>
+        <small class="ap-export-note">Buka di Excel lewat tombol Excel agar NIK dan NISN tetap utuh; CSV untuk aplikasi lain.</small>
       </div>
 
       <AbNotice v-if="error" tone="bad">
@@ -175,6 +176,7 @@ const emptyText = computed(() => {
 .ap-filter-option.is-on { background: var(--ab-forest); color: #fff; }
 .ap-export { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 10px; padding: 10px 0; border-top: 1px solid var(--ab-line); color: var(--ab-ink-2); font-size: 14px; font-weight: 600; }
 .ap-export > span { margin-right: auto; }
+.ap-export-note { flex-basis: 100%; font-size: 13px; font-weight: 500; }
 .ap-state { display: grid; place-items: center; padding: 56px 0; }
 .ap-list { margin: 0; padding: 0; list-style: none; }
 .ap-list li { border-top: 1px solid var(--ab-line); }

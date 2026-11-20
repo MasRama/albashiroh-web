@@ -113,7 +113,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', beforeUnload));
             </div>
             <AbSwitch v-model="draft.open" label="Formulir menerima pendaftaran" />
           </div>
-          <AbField v-model="draft.academicYear" label="Tahun ajaran" placeholder="2027/2028" :error="error('academicYear')" :maxlength="20" hint="Tampil di judul formulir." />
+          <AbField v-model="draft.academicYear" label="Tahun ajaran" placeholder="2027/2028" :error="error('academicYear')" :maxlength="20" hint="Seperti 2027/2028. Tampil di judul formulir; nomor pendaftaran dihitung per tahun ajaran." />
         </div>
       </AbCard>
 

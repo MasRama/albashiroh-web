@@ -206,7 +206,13 @@ const groupLink = z
 /** What the committee sets: whether the form takes registrations, and what an applicant reads once registered. */
 export const ppdbSettingsSchema = z.object({
   open: z.boolean().default(false),
-  academicYear: z.string().trim().max(20).default(''),
+  /** The season, "2027/2028": registrations are numbered and checked for repeats per season. */
+  academicYear: z
+    .string()
+    .trim()
+    .max(20)
+    .refine((value) => value === '' || (/^\d{4}\/\d{4}$/.test(value) && Number(value.slice(5)) === Number(value.slice(0, 4)) + 1), 'Tulis dua tahun berurutan, seperti 2027/2028')
+    .default(''),
   /** Per level: payment and next steps, plain text shown on the success screen. */
   nextSteps: z
     .object({ smp: z.string().trim().max(2000).default(''), sma: z.string().trim().max(2000).default('') })
@@ -215,6 +221,17 @@ export const ppdbSettingsSchema = z.object({
   groupLink: z.object({ smp: groupLink, sma: groupLink }).default({ smp: '', sma: '' }),
 });
 export type PpdbSettings = z.infer<typeof ppdbSettingsSchema>;
+
+/**
+ * The year a registration's number and repeat check count toward: the first
+ * year of the season the committee set ("2027/2028" gives 2027), so a season
+ * that runs past New Year keeps one numbering; without a season, the calendar
+ * year in the school's time zone (WIB).
+ */
+export function registrationSeason(academicYear: string, now: number): number {
+  const start = /^(\d{4})\//.exec(academicYear)?.[1];
+  return start ? Number(start) : new Date(now + 7 * 60 * 60 * 1000).getUTCFullYear();
+}
 
 export const ppdbSettingsUpdateSchema = z.object({ settings: ppdbSettingsSchema, revision: z.number().int().min(0) });
 

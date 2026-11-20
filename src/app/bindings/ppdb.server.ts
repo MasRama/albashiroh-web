@@ -1,4 +1,5 @@
 import type { Hono } from 'hono';
+import { every } from 'hono/combine';
 import { z } from 'zod';
 import { declarePermissions, declareRoles, getCurrentUser, isAllowed, SESSION_COOKIE_NAME } from '../../features/auth';
 import { createPpdbRoutes, PPDB_ACTIVITY, PPDB_PERMISSIONS, PPDB_ROUTE_POLICIES, ppdbAccess, type PpdbServerHost } from '../../features/ppdb';
@@ -14,14 +15,28 @@ declareRoles([
 ]);
 
 const environment = readFeatureEnv('ppdb', {
-  /** Registrations one visitor may send per hour; a family registering siblings stays well under it. */
-  PPDB_SUBMIT_MAX: z.coerce.number().int().positive().default(5),
+  /**
+   * Registrations accepted from one address per hour. Families on one network
+   * (the school's wifi on registration day, a phone carrier's shared address)
+   * share it, so it is generous; refused and repeated sends do not count.
+   */
+  PPDB_SUBMIT_MAX: z.coerce.number().int().positive().default(30),
+  /** Sends of any outcome from one address per hour: holds off a script hammering the form. */
+  PPDB_ATTEMPT_MAX: z.coerce.number().int().positive().default(120),
 });
 
-const submitLimiter = createRateLimiter({ name: 'ppdb-submit', maxRequests: environment.PPDB_SUBMIT_MAX, windowMs: 60 * 60 * 1000 });
+const HOUR = 60 * 60 * 1000;
+const attemptLimiter = createRateLimiter({ name: 'ppdb-attempt', maxRequests: environment.PPDB_ATTEMPT_MAX, windowMs: HOUR });
+const submitLimiter = createRateLimiter({
+  name: 'ppdb-submit',
+  maxRequests: environment.PPDB_SUBMIT_MAX,
+  windowMs: HOUR,
+  counts: (context) => context.res.status === 201,
+});
 
-/** Deterministic test reset for the per-visitor registration limit. */
+/** Deterministic test reset for the per-visitor registration limits. */
 export function resetPpdbSubmitLimit(): void {
+  attemptLimiter.reset();
   submitLimiter.reset();
 }
 
@@ -34,7 +49,7 @@ export function createPpdbServerHost(activity: ActivityReporter): PpdbServerHost
     },
     access: ppdbAccess('ppdb'),
     allows: (actorId, rule) => isAllowed(actorId, rule),
-    submitLimit: submitLimiter.middleware,
+    submitLimit: every(attemptLimiter.middleware, submitLimiter.middleware),
     report: activity.declare('ppdb', PPDB_ACTIVITY),
   };
 }

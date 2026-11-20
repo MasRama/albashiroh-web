@@ -43,26 +43,26 @@ function toSummary(row: ApplicationRow): ApplicationSummary {
   return { id: row.id, code: row.code, level: row.level, status: row.status, name: row.name, previousSchool: row.previous_school, phone: row.phone, createdAt: row.created_at };
 }
 
-/** The year a registration counts toward, in the school's time zone (WIB). */
-export function registrationYear(time: number): number {
-  return new Date(time + 7 * 60 * 60 * 1000).getUTCFullYear();
-}
-
 export type InsertResult = { status: 'created'; application: Application } | { status: 'duplicate' };
 
 /**
- * Saves a registration with the next number for its level and year, for
- * example SMP-2026-0007. A second registration of the same NISN to the same
- * level in the same year is refused rather than numbered again.
+ * Saves a registration with the next number for its level and season, for
+ * example SMP-2027-0007. A second registration of the same NISN to the same
+ * level in the same season is refused rather than numbered again. Numbers
+ * only ever go up: a deleted registration's number is never handed out
+ * again, so a family's receipt always points at their own child.
  */
-export function insertApplication(values: ApplicationValues, now: number): InsertResult {
+export function insertApplication(values: ApplicationValues, year: number, now: number): InsertResult {
   const database = getDatabase();
-  const year = registrationYear(now);
   return database.transaction((): InsertResult => {
     const taken = database.prepare('SELECT 1 FROM ppdb_applications WHERE level = ? AND year = ? AND nisn = ?').get(values.level, year, values.student.nisn);
     if (taken) return { status: 'duplicate' };
     const { next } = database
-      .prepare('SELECT COALESCE(MAX(sequence), 0) + 1 AS next FROM ppdb_applications WHERE level = ? AND year = ?')
+      .prepare(
+        `INSERT INTO ppdb_sequences (level, year, last) VALUES (?, ?, 1)
+         ON CONFLICT (level, year) DO UPDATE SET last = last + 1
+         RETURNING last AS next`,
+      )
       .get(values.level, year) as { next: number };
     const row: ApplicationRow = {
       id: randomUUID(),

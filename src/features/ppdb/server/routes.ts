@@ -7,6 +7,7 @@ import {
   exportQuerySchema,
   LEVEL_LABEL,
   ppdbSettingsUpdateSchema,
+  registrationSeason,
   reviewSchema,
   type ApplicationPage,
   type PpdbForm,
@@ -79,9 +80,9 @@ export function createPpdbRoutes(host: PpdbServerHost) {
       const parsed = applicationInputSchema.safeParse(body);
       if (!parsed.success) return validationFailed(context, parsed.error);
       const { website: _website, token: _token, ...values } = parsed.data;
-      const result = insertApplication(values, now());
+      const result = insertApplication(values, registrationSeason(settings.academicYear, now()), now());
       if (result.status === 'duplicate') {
-        return refuse(context, 409, `This NISN is already registered for ${LEVEL_LABEL[values.level]} this year`, 'ALREADY_REGISTERED');
+        return refuse(context, 409, `This NISN is already registered for ${LEVEL_LABEL[values.level]} this season`, 'ALREADY_REGISTERED');
       }
       const { application } = result;
       const receipt: Receipt = {

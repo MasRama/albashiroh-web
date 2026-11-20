@@ -33,6 +33,11 @@ const loading = ref(true);
 const loadError = ref<string | null>(null);
 const status = ref<ApplicationStatus>('baru');
 const note = ref('');
+/** After a stale save: the note another member saved meanwhile, when it differs from this draft. */
+const theirNote = ref<string | null>(null);
+const noteHint = computed(() =>
+  theirNote.value === null ? 'Hanya terlihat oleh panitia, ikut di file unduhan.' : `Catatan yang baru disimpan panitia lain: ${theirNote.value || '(kosong)'}`,
+);
 const saving = ref(false);
 const confirming = ref(false);
 const removing = ref(false);
@@ -41,6 +46,7 @@ function show(next: Application): void {
   application.value = next;
   status.value = next.status;
   note.value = next.note;
+  theirNote.value = null;
 }
 
 async function load(): Promise<void> {
@@ -72,9 +78,11 @@ async function save(): Promise<void> {
   if (result.code === 'STALE_REVISION' && result.current) {
     // Keep what this member chose; show the newer version underneath so they can decide.
     const mine = { status: status.value, note: note.value };
-    application.value = result.current as Application;
+    const current = result.current as Application;
+    application.value = current;
     status.value = mine.status;
     note.value = mine.note;
+    theirNote.value = current.note === mine.note ? null : current.note;
     showToast(ppdbRefusalText(result), 'warn');
     return;
   }
@@ -184,7 +192,7 @@ const familyRows = computed(() => {
           <template v-if="manages">
             <form class="apl-form" @submit.prevent="save">
               <AbSelect :model-value="status" label="Status" :options="STATUS_OPTIONS" @update:model-value="status = $event as ApplicationStatus" />
-              <AbField v-model="note" label="Catatan panitia" multiline :rows="5" :maxlength="2000" hint="Hanya terlihat oleh panitia, ikut di file unduhan." />
+              <AbField v-model="note" label="Catatan panitia" multiline :rows="5" :maxlength="2000" :hint="noteHint" />
               <AbButton type="submit" block :loading="saving" :disabled="!changed">Simpan status</AbButton>
             </form>
           </template>

@@ -142,6 +142,7 @@ function fillForm(): void {
 beforeEach(async () => {
   seed();
   getDatabase().prepare('DELETE FROM ppdb_applications').run();
+  getDatabase().prepare('DELETE FROM ppdb_sequences').run();
   getDatabase().prepare('DELETE FROM ppdb_settings').run();
   container = document.createElement('div');
   document.body.append(container);
@@ -238,7 +239,7 @@ describe('PPDB on the public site', () => {
     type('pf-student-previousSchool', 'SD Contoh 1');
     vi.spyOn(Date, 'now').mockImplementation(() => realNow() + 120_000);
     submit();
-    await until(() => text().includes('NISN ini sudah terdaftar di SMP tahun ini.'));
+    await until(() => text().includes('NISN ini sudah terdaftar di SMP tahun ajaran ini.'));
     expect(byId('pf-student-nisn').getAttribute('aria-invalid')).toBe('true');
   });
 });
@@ -271,6 +272,7 @@ describe('PPDB in the admin', () => {
     expect(row.textContent).toContain('SMP Contoh 1');
     const downloads = [...container.querySelectorAll<HTMLAnchorElement>('.ap-export a')].map((link) => link.getAttribute('href'));
     expect(downloads).toEqual(['/api/ppdb/applications/export?format=xlsx', '/api/ppdb/applications/export?format=csv']);
+    expect(container.querySelector('.ap-export-note')?.textContent).toContain('NIK dan NISN tetap utuh');
 
     row.querySelector<HTMLAnchorElement>('a')!.click();
     await until(() => text().includes('Data calon siswa'));
@@ -285,6 +287,31 @@ describe('PPDB in the admin', () => {
     container.querySelector<HTMLFormElement>('form.apl-form')!.dispatchEvent(new Event('submit', { cancelable: true }));
     await settle();
     expect(getDatabase().prepare('SELECT status, revision FROM ppdb_applications WHERE id = ?').get(id)).toEqual({ status: 'diterima', revision: 2 });
+  });
+
+  it('shows the note another member saved meanwhile, so a second save never drops it unseen', async () => {
+    const id = await registered();
+    await openTab(committee.cookie, `/admin/ppdb/${id}`);
+    await until(() => text().includes('Data calon siswa'));
+    // Another member saves a note after this page was opened.
+    getDatabase().prepare("UPDATE ppdb_applications SET note = 'Ijazah belum dilampirkan.', revision = revision + 1 WHERE id = ?").run(id);
+
+    const note = container.querySelector<HTMLTextAreaElement>('form.apl-form textarea')!;
+    note.value = 'Berkas lengkap.';
+    note.dispatchEvent(new Event('input'));
+    await settle();
+    container.querySelector<HTMLFormElement>('form.apl-form')!.dispatchEvent(new Event('submit', { cancelable: true }));
+    await settle();
+
+    expect(note.value).toBe('Berkas lengkap.');
+    expect(text()).toContain('Catatan yang baru disimpan panitia lain: Ijazah belum dilampirkan.');
+    expect(getDatabase().prepare('SELECT note FROM ppdb_applications WHERE id = ?').get(id)).toEqual({ note: 'Ijazah belum dilampirkan.' });
+
+    // Saving again is now a choice made with both notes in view; the hint goes once saved.
+    container.querySelector<HTMLFormElement>('form.apl-form')!.dispatchEvent(new Event('submit', { cancelable: true }));
+    await settle();
+    expect(getDatabase().prepare('SELECT note, revision FROM ppdb_applications WHERE id = ?').get(id)).toEqual({ note: 'Berkas lengkap.', revision: 3 });
+    expect(text()).not.toContain('Catatan yang baru disimpan panitia lain');
   });
 
   it('keeps the review and delete controls from a committee member who can only read', async () => {

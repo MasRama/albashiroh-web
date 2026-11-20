@@ -13,6 +13,12 @@ export interface RateLimitOptions {
   keyGenerator?: (context: Context) => string;
   /** Requests that must not consume budget (health probes, static assets). */
   skip?: (context: Context) => boolean;
+  /**
+   * Whether a request that went through uses up budget, decided once it is
+   * answered; by default every admitted request does. A form can count only
+   * what it actually accepted, so a refused or repeated send costs nothing.
+   */
+  counts?: (context: Context) => boolean;
   /** Overrideable clock for deterministic tests. */
   now?: () => number;
   /** Hard ceiling on distinct keys; unseen identities fail closed at saturation. Defaults to 10_000. */
@@ -23,7 +29,7 @@ export interface RateLimiter {
   reset: () => void;
 }
 export function createRateLimiter(options: RateLimitOptions): RateLimiter {
-  const { maxRequests, windowMs, name, skip } = options;
+  const { maxRequests, windowMs, name, skip, counts } = options;
   const keyGenerator = options.keyGenerator ?? ((context: Context) => clientIp(context));
   const now = options.now ?? Date.now;
   const maxKeys = options.maxKeys ?? 10_000;
@@ -93,7 +99,14 @@ export function createRateLimiter(options: RateLimitOptions): RateLimiter {
       context.header('X-RateLimit-Limit', String(maxRequests));
       context.header('X-RateLimit-Remaining', String(Math.max(0, maxRequests - timestamps.length)));
       context.header('X-RateLimit-Reset', String(Math.ceil((currentTime + resetMs) / 1000)));
-      return next();
+      if (!counts) return next();
+      await next();
+      if (!counts(context)) {
+        // Give this request's place back.
+        const index = timestamps.lastIndexOf(currentTime);
+        if (index !== -1) timestamps.splice(index, 1);
+        context.res.headers.set('X-RateLimit-Remaining', String(Math.max(0, maxRequests - timestamps.length)));
+      }
     },
     reset: () => {
       buckets.clear();
