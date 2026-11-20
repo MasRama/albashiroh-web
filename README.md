@@ -60,6 +60,31 @@ PowerPoint) are kept as uploaded. Both are served at `/media/<id>/<file>`.
   <img src="docs/screenshots/admin-media.webp" alt="The media library in the admin panel" width="80%">
 </p>
 
+Content is written per portal: **Situs Yayasan**, **Portal SMP** and
+**Portal SMA** each have news, agenda, gallery, achievements, facilities,
+staff, documents, FAQ and testimonials; the schools add extracurriculars and
+academics, and SMA adds alumni. An entry is a draft until it is set to
+**Terbit**, then it shows on that portal's pages, and the foundation site
+also lists the schools' news, agenda, gallery, achievements, facilities,
+staff and documents. Each portal's **Pengaturan portal** holds its home page
+text, vision and mission, profile, the principal's welcome, graduate
+competencies, contact details and PPDB text. Articles are written in a
+built-in editor whose output the server reduces to headings, emphasis, lists,
+quotes, links and photos from the library. Roles `editor-yayasan`,
+`editor-smp` and `editor-sma` give one portal each, with the media library.
+
+Entries without a photo are counted on each portal's page and can be filtered
+with **Belum ada gambar**. The public API returns such entries with no image,
+never a broken path.
+
+<p>
+  <img src="docs/screenshots/admin-portal.webp" alt="A portal's content overview, with entries still missing a photo" width="80%">
+</p>
+<p>
+  <img src="docs/screenshots/admin-entry.webp" alt="Editing a news entry with the article editor" width="64%">
+  <img src="docs/screenshots/admin-entries-phone.webp" alt="The news list on a phone" width="17%">
+</p>
+
 ## Checks
 
 ```bash

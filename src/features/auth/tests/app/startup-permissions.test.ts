@@ -23,6 +23,9 @@ describe('application permissions', () => {
     );
     expect(slugs).toEqual([
       'activity.view',
+      'content.sma',
+      'content.smp',
+      'content.yayasan',
       'media.delete',
       'media.upload',
       'media.view',
@@ -44,6 +47,6 @@ describe('application permissions', () => {
            WHERE r.slug = 'admin'`,
         )
         .get(),
-    ).toEqual({ count: 13 });
+    ).toEqual({ count: 16 });
   });
 });

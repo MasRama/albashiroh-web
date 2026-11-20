@@ -79,7 +79,8 @@ async function upload(event: Event): Promise<void> {
 </template>
 
 <style scoped>
-.mf { display: grid; gap: 8px; }
+/* One column no wider than the field: the empty box's minimum height, through its aspect ratio, would otherwise widen a narrow column. */
+.mf { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
 .mf-label { font-size: 14.5px; font-weight: 700; }
 .mf-filled { display: grid; gap: 10px; }
 .mf-preview { display: block; width: 100%; max-height: 360px; border: 1px solid var(--ab-line); border-radius: 14px; background: var(--ab-paper-2); object-fit: cover; }

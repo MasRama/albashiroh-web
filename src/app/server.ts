@@ -48,6 +48,7 @@ import {
 import composeUsersServer from './bindings/users.server';
 import composeActivityServer, { createActivityRecorder } from './bindings/activity.server';
 import composeMediaServer from './bindings/media.server';
+import composeContentServer from './bindings/content.server';
 import { healthRoutes } from '../features/health';
 
 const frontendBuildDirectory = resolve(process.cwd(), 'build', 'client');
@@ -252,6 +253,7 @@ app.route('/api/roles', createAccessRoutes(activity.declare('roles', ROLES_ACTIV
 composeUsersServer(app, { activity });
 composeActivityServer(app);
 composeMediaServer(app, { activity });
+composeContentServer(app, { activity });
 // Live updates for signed-in browsers; Auth decides who is listening and
 // whether they meet a topic's rule, as it does for every guarded route.
 app.get(
