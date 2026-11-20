@@ -13,3 +13,4 @@ export type { FileRef, ImageRef, MediaAccess, MediaItem, MediaKind } from './con
 export type { MediaServerHost } from './server/host';
 export { createMediaFileRoutes, createMediaRoutes, MEDIA_ROUTE_POLICIES } from './server/routes';
 export { fileRefs, findMedia, imageRefs } from './server/repository';
+export { discardMedia, storeMedia, type MediaSource, type StoredMedia } from './server/store';
