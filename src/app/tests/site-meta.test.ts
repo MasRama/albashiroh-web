@@ -143,3 +143,25 @@ describe('sitemap and robots', () => {
     expect(await sitemap.text()).toMatch(/<loc>https?:\/\/[^<]+\/smp\/tanya-jawab<\/loc>/);
   });
 });
+
+describe('trailing slashes', () => {
+  it('sends an address with a trailing slash to the one without, keeping its query', async () => {
+    for (const [from, to] of [
+      ['/berita/', '/berita'],
+      ['/smp/', '/smp'],
+      ['/ppdb/?jenjang=sma', '/ppdb?jenjang=sma'],
+      ['/admin/ppdb/', '/admin/ppdb'],
+    ]) {
+      const response = await app.request(from!);
+      expect(response.status, from).toBe(301);
+      expect(response.headers.get('location'), from).toBe(to);
+    }
+  });
+
+  it('leaves the home page, the API and files alone', async () => {
+    expect((await app.request('/')).status).not.toBe(301);
+    expect((await app.request('/api/site/smp/')).status).not.toBe(301);
+    expect((await app.request('/assets/app.js/')).status).not.toBe(301);
+  });
+});
+

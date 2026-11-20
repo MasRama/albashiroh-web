@@ -291,6 +291,11 @@ app.get('*', async (context) => {
     context.header('Cache-Control', 'no-store');
     return context.notFound();
   }
+  // One address per page: "/berita/" is "/berita", for visitors and search engines alike.
+  if (requested.pathname.length > 1 && requested.pathname.endsWith('/')) {
+    const url = new URL(context.req.url);
+    return context.redirect(`${url.pathname.replace(/\/+$/, '')}${url.search}`, 301);
+  }
   if (!frontendBuildAvailable) {
     return context.text(
       'Production frontend build is unavailable. Run npm run build before npm start.',
