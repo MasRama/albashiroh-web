@@ -1,0 +1,159 @@
+/*
+ * Al Bashiroh design tokens and base styles, from the approved mockups
+ * (Yayasan home and SMA portal home). Every screen, public and admin, reads
+ * these. The look: warm paper, solid colour blocks, crisp white cards with a
+ * hairline border, Bricolage Grotesque 800 headlines over Plus Jakarta Sans.
+ * No gradient washes, glows or tinted chips above headlines.
+ */
+:root {
+  --ab-paper: #F5F1E8;
+  --ab-paper-2: #F1EEE6;
+  --ab-card: #FFFFFF;
+  --ab-ink: #13211A;
+  --ab-ink-2: #3A4740;
+  --ab-mute: #6B746E;
+  --ab-faint: #9AA19C;
+  --ab-line: #E2DDD1;
+  --ab-line-strong: #CFC8B8;
+
+  --ab-forest: #0E3A27;
+  --ab-forest-2: #164B33;
+  --ab-smp: #2F8A1F;
+  --ab-smp-deep: #246B17;
+  --ab-sma: #F26300;
+  --ab-sma-deep: #D95700;
+  --ab-sun: #FFC83D;
+  --ab-red: #B4321F;
+  --ab-red-soft: #FBEAE6;
+  --ab-green-soft: #E6F1E2;
+  --ab-sun-soft: #FFF3D1;
+
+  --ab-display: 'Bricolage Grotesque Variable', 'Bricolage Grotesque', system-ui, sans-serif;
+  --ab-font: 'Plus Jakarta Sans Variable', 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --ab-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --ab-radius-s: 10px;
+  --ab-radius: 14px;
+  --ab-radius-l: 20px;
+  --ab-radius-xl: 28px;
+  --ab-shadow-pop: 0 10px 30px -12px rgba(14, 30, 20, .25);
+  --ab-shadow-modal: 0 24px 60px -20px rgba(14, 30, 20, .45);
+  --ab-focus: 0 0 0 3px rgba(14, 58, 39, .22);
+  --ab-safe-top: env(safe-area-inset-top, 0px);
+  --ab-safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+html {
+  background: var(--ab-paper);
+  color: var(--ab-ink);
+  font-family: var(--ab-font);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  margin: 0;
+  background: var(--ab-paper);
+  color: var(--ab-ink);
+  font-family: var(--ab-font);
+  font-size: 16px;
+  line-height: 1.55;
+}
+
+/* Al Bashiroh screens: the root of every app-owned page. */
+.ab {
+  min-height: 100dvh;
+  background: var(--ab-paper);
+  color: var(--ab-ink);
+  font-family: var(--ab-font);
+  -webkit-tap-highlight-color: transparent;
+}
+.ab *, .ab *::before, .ab *::after { box-sizing: border-box; }
+.ab button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+.ab button:disabled { cursor: default; }
+.ab input, .ab textarea, .ab select { font: inherit; color: inherit; }
+.ab a { color: inherit; text-decoration: none; }
+.ab :focus-visible { outline: 2px solid var(--ab-forest); outline-offset: 2px; }
+.ab .num { font-variant-numeric: tabular-nums; }
+
+/* Headline type: Bricolage Grotesque 800, tight. */
+.ab-display {
+  font-family: var(--ab-display);
+  font-weight: 800;
+  letter-spacing: -.035em;
+  line-height: .98;
+}
+
+/* The small uppercase label above a section headline (plain text, never a chip). */
+.ab-kicker {
+  color: var(--ab-sma);
+  font-size: 12.5px;
+  font-weight: 800;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+
+.ab-visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* A table of records in a white card; on phones each row stacks. */
+.ab-table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+.ab-table th {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--ab-line);
+  color: var(--ab-mute);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .1em;
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.ab-table td { padding: 14px 16px; border-bottom: 1px solid var(--ab-line); vertical-align: middle; }
+.ab-table tr:last-child td { border-bottom: 0; }
+.ab-table tbody tr[data-clickable] { cursor: pointer; }
+.ab-table tbody tr[data-clickable]:hover td { background: #FBF9F4; }
+.ab-table .ab-table-end { text-align: right; white-space: nowrap; }
+.ab-table .ab-table-sub { display: block; margin-top: 2px; color: var(--ab-mute); font-size: 13px; }
+
+@media (max-width: 719px) {
+  .ab-table thead { display: none; }
+  .ab-table, .ab-table tbody, .ab-table tr, .ab-table td { display: block; width: 100%; }
+  .ab-table tr { padding: 12px 16px; border-bottom: 1px solid var(--ab-line); }
+  .ab-table tr:last-child { border-bottom: 0; }
+  .ab-table td { padding: 2px 0; border: 0; }
+  .ab-table .ab-table-end { text-align: left; }
+}
+
+/* A native select styled like the other fields. */
+.ab-select {
+  width: 100%;
+  height: 46px;
+  padding: 0 38px 0 14px;
+  border: 1.5px solid var(--ab-line);
+  border-radius: 12px;
+  appearance: none;
+  background-color: var(--ab-card);
+  background-image: linear-gradient(45deg, transparent 50%, var(--ab-mute) 50%), linear-gradient(135deg, var(--ab-mute) 50%, transparent 50%);
+  background-position: right 19px center, right 14px center;
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
+  font-size: 15px;
+  font-weight: 600;
+}
+.ab-select:focus { border-color: var(--ab-forest); box-shadow: var(--ab-focus); outline: 0; }
+
+/* The page behind an open dialog stops scrolling. */
+body.ab-locked { overflow: hidden; }
+
+@media print {
+  .ab { background: #fff; min-height: 0; }
+  .ab-no-print { display: none !important; }
+}
