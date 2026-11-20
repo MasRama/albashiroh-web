@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { Hono } from 'hono';
 import { vi } from 'vitest';
+import { createAccountWithRoles, hashPassword } from '../../../features/auth';
 
 /**
  * A browser stand-in for contract tests: Feature web clients run unchanged
@@ -34,7 +35,7 @@ export interface TestAccount {
 export interface TestBrowser {
   /** Every cookie the jar holds, HttpOnly included, as a request header value. */
   cookieHeader(): string;
-  /** Registers through the real Auth endpoints, leaving this browser signed in. */
+  /** Creates an account through Auth's boundary and signs in, leaving this browser signed in. */
   signUp(name?: string): Promise<TestAccount>;
 }
 
@@ -95,14 +96,16 @@ export function installBrowser(app: Hono): TestBrowser {
       await browserFetch('/api/auth/csrf');
       const token = /csrf_token=([^;]+)/.exec(cookiesFor('/', false))?.[1] ?? '';
       const account = { email: `${randomUUID()}@example.com`, password: 'correct horse battery staple' };
-      const response = await browserFetch('/api/auth/register', {
+      // Registration is closed in this application: the account is made
+      // through Auth's boundary, the way the owner makes one, then signs in.
+      const created = createAccountWithRoles({ id: randomUUID(), name, email: account.email, passwordHash: await hashPassword(account.password) });
+      const response = await browserFetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': token },
-        body: JSON.stringify({ name, ...account }),
+        body: JSON.stringify(account),
       });
-      if (response.status !== 201) throw new Error(`Sign-up failed with ${response.status}`);
-      const payload = (await response.json()) as { data: { user: { id: string } } };
-      return { id: payload.data.user.id, ...account };
+      if (response.status !== 200) throw new Error(`Sign-in failed with ${response.status}`);
+      return { id: created.id, ...account };
     },
   };
 }

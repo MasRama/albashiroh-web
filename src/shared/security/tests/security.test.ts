@@ -17,8 +17,13 @@ import { securityHeaders } from '../headers';
 import { clientIp } from '../ip';
 import { createRateLimiter } from '../rate-limit';
 import { csrfHeaders, issueCsrf, mergeResponseCookies } from './helpers';
+import { createReferenceAuthApp } from '../../../features/auth/tests/app/accounts';
 
 const TEST_PASSWORD = 'correct horse battery staple';
+// The application closes registration. Accounts are registered on Auth as it
+// ships (same database, same CSRF check); tests about the application
+// pipeline expect the closed route's 404 once a request gets past every gate.
+const reference = createReferenceAuthApp();
 
 function testIp(): Record<string, string> {
   return { 'x-test-ip': `192.0.2.${Math.floor(Math.random() * 250) + 1}:${randomUUID()}` };
@@ -29,8 +34,8 @@ function uniqueEmail(): string {
 }
 
 async function registerWithCsrf(email: string, password = TEST_PASSWORD, name = 'Security Probe') {
-  const bootstrap = await issueCsrf(app);
-  const response = await app.request('/api/auth/register', {
+  const bootstrap = await issueCsrf(reference);
+  const response = await reference.request('/api/auth/register', {
     method: 'POST',
     headers: { ...csrfHeaders(bootstrap), 'Content-Type': 'application/json', ...testIp() },
     body: JSON.stringify({ name, email, password }),
@@ -170,7 +175,8 @@ describe('CSRF double-submit protection', () => {
       headers: { ...csrfHeaders(state), 'Content-Type': 'application/json' },
       body,
     });
-    expect(valid.status).toBe(201);
+    // Past the CSRF check, the closed registration route answers.
+    expect(valid.status).toBe(404);
   });
 
   it('leaves safe methods unenforced', async () => {
@@ -584,10 +590,10 @@ describe('input normalization and unsafe keys', () => {
 
   it('discards prototype-pollution keys instead of merging them', async () => {
     const email = uniqueEmail();
-    const state = await issueCsrf(app);
+    const state = await issueCsrf(reference);
     const body = JSON.stringify({ name: 'Ada Lovelace', email, password: TEST_PASSWORD });
     const polluted = body.replace('{', '{"__proto__":{"polluted":true},');
-    const response = await app.request('/api/auth/register', {
+    const response = await reference.request('/api/auth/register', {
       method: 'POST',
       headers: { ...csrfHeaders(state), 'Content-Type': 'application/json', ...testIp() },
       body: polluted,
@@ -749,7 +755,8 @@ describe('request body Content-Type bypass', () => {
       headers: { ...csrfHeaders(state), 'Content-Type': 'text/plain', ...testIp() },
       body: JSON.stringify({ name: 'Security Probe', email, password: TEST_PASSWORD }),
     });
-    expect(response.status).toBe(201);
+    // Past the body limit, the closed registration route answers.
+    expect(response.status).toBe(404);
   });
 
   it('denies the upload budget to unrelated endpoints declaring multipart', async () => {

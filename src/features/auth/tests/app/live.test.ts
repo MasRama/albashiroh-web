@@ -5,6 +5,7 @@ import { getDatabase, seed } from '../../../../shared/database';
 import { closeEventStreams, EVENTS_PATH } from '../../../../shared/realtime';
 import { readEvents, type EventReader } from '../../../../shared/realtime/tests/helpers';
 import { csrfHeaders, issueCsrf, mergeResponseCookies } from '../../../../shared/security/tests/helpers';
+import { createTestAccount } from '../../../../app/tests/personas';
 
 /**
  * Live updates through the real application: Auth ends the streams of
@@ -42,9 +43,9 @@ async function send(browser: Browser, path: string, init: { method?: string; bod
 async function signUp(): Promise<{ id: string; email: string; browser: Browser }> {
   const browser = newBrowser();
   const email = `${randomUUID()}@example.com`;
-  const response = await send(browser, '/api/auth/register', { method: 'POST', body: { name: 'Live Member', email, password: PASSWORD } });
-  expect(response.status).toBe(201);
-  return { id: response.body.data.user.id as string, email, browser };
+  const id = await createTestAccount('Live Member', email, PASSWORD);
+  expect((await send(browser, '/api/auth/login', { method: 'POST', body: { email, password: PASSWORD } })).status).toBe(200);
+  return { id, email, browser };
 }
 
 async function signIn(email: string): Promise<Browser> {

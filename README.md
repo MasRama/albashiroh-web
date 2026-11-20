@@ -36,6 +36,12 @@ password `admin12345`, which must be changed at first sign-in. Set
 `NARA_ADMIN_NAME`, `NARA_ADMIN_EMAIL` and `NARA_ADMIN_PASSWORD` before setup
 to choose your own.
 
+The admin panel is at <http://localhost:5555/admin> (sign in at
+`/admin/masuk`). Nobody signs up on their own: an administrator creates each
+staff account under **Pengguna**, gives it a role, and sends the sign-in
+details the panel prepares. A new account, and one whose password an
+administrator reset, chooses its own password at first sign-in.
+
 ## Checks
 
 ```bash

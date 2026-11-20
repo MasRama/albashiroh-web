@@ -245,7 +245,8 @@ declareMaintenance('auth', AUTH_MAINTENANCE);
 const activity = createActivityRecorder((error) => {
   Logger.error('Failed to record application activity', error);
 });
-app.route('/api/auth', createAuthRoutes(activity.declare('auth', AUTH_ACTIVITY)));
+// Nobody signs up on their own: an administrator creates staff accounts from Pengguna.
+app.route('/api/auth', createAuthRoutes(activity.declare('auth', AUTH_ACTIVITY), { registration: false }));
 app.route('/api/roles', createAccessRoutes(activity.declare('roles', ROLES_ACTIVITY)));
 composeUsersServer(app, { activity });
 composeActivityServer(app);

@@ -26,6 +26,15 @@ that does not exist. Remove the `/register` route from `src/app/router.ts` as
 well; the login page offers the register link only while that route exists.
 Registration can never grant `admin`.
 
+### In this application
+
+Registration is closed (`registration: false` in `src/app/server.ts`), and the
+router has no `/register` route. Staff accounts are created by an
+administrator under **Pengguna** (`/admin/pengguna`). The Users binding
+(`src/app/bindings/users.server.ts`) creates them with `mustChangePassword`
+set, the same as a password reset, so the router holds the person on
+`/admin/kata-sandi` until they replace the password the administrator chose.
+
 ## Roles your application needs
 
 Declare the roles your application needs while composing it, next to the
@@ -65,7 +74,10 @@ else await session.refresh();
 ```
 
 Keep such pages in `src/app/pages/` or in a Feature of your own, and import
-only from `src/features/auth/web`. Auth's internals then stay untouched, and
+only from `src/features/auth/web`. This application does: its sign-in,
+password, profile, users, roles, security and activity screens are in
+`src/app/pages/admin/`, in Indonesian, and talk to the same routes through
+`src/app/account.ts`. Auth's internals then stay untouched, and
 `nara evolve auth` keeps working. `src/features/auth/tests/app/browser.test.ts`
 proves that a page built this way signs in.
 
