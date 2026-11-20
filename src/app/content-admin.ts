@@ -13,7 +13,7 @@ import {
   Sparkles,
   UserRound,
   Building,
-} from 'lucide-vue-next';
+} from '@lucide/vue';
 import type { Component } from 'vue';
 import { CONTENT_TYPES, PORTAL_INFO, type ContentEntry, type ContentType, type Portal } from '../features/content/web';
 import { dateShort } from '../shared/ui';

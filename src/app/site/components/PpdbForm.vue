@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowRight, CheckCircle2, Copy, LoaderCircle, MessageCircle, Users } from 'lucide-vue-next';
+import { ArrowRight, CheckCircle2, Copy, LoaderCircle, MessageCircle, Users } from '@lucide/vue';
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, toRaw } from 'vue';
 import {
   applicationInputSchema,

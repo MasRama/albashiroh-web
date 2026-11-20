@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowRight, UserRound } from 'lucide-vue-next';
+import { ArrowRight, UserRound } from '@lucide/vue';
 import { computed } from 'vue';
 import { RouterLink } from 'vue-router';
 import PageHead from '../../site/components/PageHead.vue';

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ExternalLink, LogOut, Menu, ShieldCheck, UserRound, X } from 'lucide-vue-next';
+import { ExternalLink, LogOut, Menu, ShieldCheck, UserRound, X } from '@lucide/vue';
 import { computed, ref, watch } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { useAuthSession } from '../../features/auth/web';

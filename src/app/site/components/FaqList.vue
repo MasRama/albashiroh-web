@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Minus, Plus } from 'lucide-vue-next';
+import { Minus, Plus } from '@lucide/vue';
 import { ref, useId } from 'vue';
 import type { PublicEntry } from '../../../features/content/web';
 

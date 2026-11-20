@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { FileText, Images, Upload } from 'lucide-vue-next';
+import { FileText, Images, Upload } from '@lucide/vue';
 import { computed, onUnmounted, reactive, ref, watch } from 'vue';
 import { useAuthSession } from '../../../features/auth/web';
 import {

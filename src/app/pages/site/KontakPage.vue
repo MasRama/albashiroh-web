@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowUpRight, Mail, MapPin, MessageCircle, Phone } from 'lucide-vue-next';
+import { ArrowUpRight, Mail, MapPin, MessageCircle, Phone } from '@lucide/vue';
 import { computed } from 'vue';
 import PageHead from '../../site/components/PageHead.vue';
 import { mapEmbed, mapLink, pageTitle, usePortal, useTitle, whatsappLink } from '../../site/site';

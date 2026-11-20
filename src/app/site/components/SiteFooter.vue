@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowUpRight, Mail, MapPin, MessageCircle, Phone } from 'lucide-vue-next';
+import { ArrowUpRight, Mail, MapPin, MessageCircle, Phone } from '@lucide/vue';
 import { computed } from 'vue';
 import { RouterLink } from 'vue-router';
 import type { SitePortalData } from '../../../features/content/web';

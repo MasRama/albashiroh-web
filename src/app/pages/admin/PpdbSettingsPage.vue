@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ExternalLink } from 'lucide-vue-next';
+import { ExternalLink } from '@lucide/vue';
 import { computed, onBeforeUnmount, onMounted, reactive, ref, toRaw } from 'vue';
 import { onBeforeRouteLeave } from 'vue-router';
 import { emptyPpdbSettings, LEVEL_LABEL, LEVELS, ppdbRefusalText, type PpdbSettings, type PpdbSettingsRecord } from '../../../features/ppdb/web';

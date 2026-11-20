@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ImagePlus, Images, Trash2, Upload } from 'lucide-vue-next';
+import { ImagePlus, Images, Trash2, Upload } from '@lucide/vue';
 import { ref, useId, watch } from 'vue';
 import { AbButton, showToast } from '../../../../shared/ui';
 import type { MediaItem } from '../../contract';

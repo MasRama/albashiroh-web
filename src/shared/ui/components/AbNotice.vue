@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CircleAlert, CircleCheck, Info, TriangleAlert } from 'lucide-vue-next';
+import { CircleAlert, CircleCheck, Info, TriangleAlert } from '@lucide/vue';
 
 /** A block of information inside a page or dialog. */
 withDefaults(defineProps<{ tone?: 'info' | 'warn' | 'bad' | 'good' }>(), { tone: 'info' });

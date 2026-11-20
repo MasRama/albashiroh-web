@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowDown, ArrowRight, Download, FileText, MessageCircle } from 'lucide-vue-next';
+import { ArrowDown, ArrowRight, Download, FileText, MessageCircle } from '@lucide/vue';
 import { computed, onMounted, ref } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { createPpdbFormClient, type PpdbForm as PpdbFormState } from '../../../features/ppdb/web';

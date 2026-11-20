@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { History } from 'lucide-vue-next';
+import { History } from '@lucide/vue';
 import { computed, onUnmounted, ref, shallowRef, watch } from 'vue';
 import { ACTIVITY_RECORDED_EVENT } from '../../../features/activity/web';
 import { useAuthSession } from '../../../features/auth/web';

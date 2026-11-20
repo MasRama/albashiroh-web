@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ImageOff } from 'lucide-vue-next';
+import { ImageOff } from '@lucide/vue';
 import { ref, watch } from 'vue';
 import { imageUrl } from '../client';
 

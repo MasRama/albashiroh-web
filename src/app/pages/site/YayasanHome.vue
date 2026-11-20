@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowRight, ArrowUpRight, BedDouble, FileDown, Play, Trophy, UsersRound } from 'lucide-vue-next';
+import { ArrowRight, ArrowUpRight, BedDouble, FileDown, Play, Trophy, UsersRound } from '@lucide/vue';
 import { computed } from 'vue';
 import { RouterLink } from 'vue-router';
 import AgendaPanel from '../../site/components/AgendaPanel.vue';

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowDown, ArrowUp, FileText, Plus } from 'lucide-vue-next';
+import { ArrowDown, ArrowUp, FileText, Plus } from '@lucide/vue';
 import { computed, onUnmounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { CONTENT_TYPES, contentRefusalText, contentType, type ContentEntry, type ContentType, type EntryStatus, type Portal } from '../../../features/content/web';

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { KeyRound, ShieldCheck } from 'lucide-vue-next';
+import { KeyRound, ShieldCheck } from '@lucide/vue';
 import { computed, reactive, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 import { useAuthSession } from '../../../features/auth/web';

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowRight, ExternalLink } from 'lucide-vue-next';
+import { ArrowRight, ExternalLink } from '@lucide/vue';
 import { computed } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
 import { useAuthSession } from '../../../features/auth/web';

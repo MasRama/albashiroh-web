@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowLeft, ChevronDown, Menu, X } from 'lucide-vue-next';
+import { ArrowLeft, ChevronDown, Menu, X } from '@lucide/vue';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { RouterLink, useRoute } from 'vue-router';
 import BrandMark from '../../brand/BrandMark.vue';

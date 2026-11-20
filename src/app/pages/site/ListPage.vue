@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowRight, ArrowUpRight, CalendarDays, Download, FileText, Play, Trophy } from 'lucide-vue-next';
+import { ArrowRight, ArrowUpRight, CalendarDays, Download, FileText, Play, Trophy } from '@lucide/vue';
 import { computed, ref, watch } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
 import type { ContentType, PublicEntry } from '../../../features/content/web';

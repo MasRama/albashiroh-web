@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Plus, X } from 'lucide-vue-next';
+import { Plus, X } from '@lucide/vue';
 import { computed, onBeforeUnmount, onMounted, reactive, ref, toRaw, watch } from 'vue';
 import { onBeforeRouteLeave } from 'vue-router';
 import {

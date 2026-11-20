@@ -19,7 +19,7 @@ import {
   Strikethrough,
   Underline,
   Undo2,
-} from 'lucide-vue-next';
+} from '@lucide/vue';
 import { computed, nextTick, onBeforeUnmount, ref, useId, watch, type Component } from 'vue';
 import { imageUrl, MediaPicker, type MediaItem } from '../../../media/web';
 
