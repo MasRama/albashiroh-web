@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import { getCookie } from 'hono/cookie';
 import { Hono } from 'hono';
 import type { Context } from 'hono';
@@ -9,20 +8,15 @@ import {
   mediaQuerySchema,
   mediaUpdateSchema,
   type ImageVariant,
-  type MediaItem,
   type MediaPage,
 } from '../contract';
 import { createGuard, jsonInput, publicRoute, queryInput, type RoutePolicy } from '../../../shared/security';
 import type { MediaServerHost } from './host';
 import { announceMediaChanged, mediaChangedTopic } from './live';
-import { classifyUpload, processImage } from './process';
-import { deleteMedia, downloadName, findMedia, insertMedia, listMedia, updateMedia } from './repository';
+import { deleteMedia, downloadName, findMedia, listMedia, updateMedia } from './repository';
+import { storageKeys, storeMedia } from './store';
 
 const VARIANTS = Object.keys(IMAGE_VARIANTS) as ImageVariant[];
-
-function storageKeys(item: Pick<MediaItem, 'id' | 'kind'>): string[] {
-  return item.kind === 'image' ? VARIANTS.map((variant) => `media/${item.id}/${variant}.webp`) : [`media/${item.id}/original`];
-}
 
 function uploadedFile(value: unknown): File | undefined {
   if (typeof value !== 'object' || value === null) return undefined;
@@ -34,14 +28,6 @@ function uploadedFile(value: unknown): File | undefined {
 
 function refuse<C extends string>(context: Context, status: 400 | 404 | 409 | 413, message: string, code: C, extra: object = {}) {
   return context.json({ success: false as const, message, code, ...extra }, status);
-}
-
-/** Display name for an upload: the file name without its extension, tidied. */
-function displayName(filename: string, kind: 'image' | 'file'): string {
-  const trimmed = filename.trim().slice(0, 160) || (kind === 'image' ? 'Foto' : 'Dokumen');
-  if (kind === 'file') return trimmed;
-  const dot = trimmed.lastIndexOf('.');
-  return (dot > 0 ? trimmed.slice(0, dot) : trimmed).replace(/[_-]+/g, ' ').trim() || 'Foto';
 }
 
 /**
@@ -79,53 +65,17 @@ export function createMediaRoutes(host: MediaServerHost) {
       }
       const file = uploadedFile(body.file);
       if (!file || file.size === 0) return refuse(context, 400, 'A file is required', 'FILE_REQUIRED');
-      const source = Buffer.from(await file.arrayBuffer());
-      const kind = classifyUpload(file, source.subarray(0, 16));
-      if (!kind.ok) {
-        return kind.code === 'FILE_TOO_LARGE'
-          ? refuse(context, 413, `File too large (max ${Math.round((kind.maxBytes ?? 0) / 1024 / 1024)}MB)`, 'FILE_TOO_LARGE')
-          : refuse(context, 400, 'Only JPG, PNG or WebP photos and PDF or Office documents are accepted', 'INVALID_FILE_TYPE');
-      }
-      const alt = typeof body.alt === 'string' ? body.alt.trim().slice(0, 300) : '';
-      const id = randomUUID();
-      const written: string[] = [];
-      try {
-        let width: number | null = null;
-        let height: number | null = null;
-        let size = source.length;
-        if (kind.kind === 'image') {
-          const processed = await processImage(source);
-          width = processed.width;
-          height = processed.height;
-          size = processed.variants.lg.length;
-          for (const variant of VARIANTS) {
-            const key = `media/${id}/${variant}.webp`;
-            await host.storage.put({ key, data: processed.variants[variant], contentType: 'image/webp' });
-            written.push(key);
-          }
-        } else {
-          const key = `media/${id}/original`;
-          await host.storage.put({ key, data: source, contentType: kind.mimeType });
-          written.push(key);
-        }
-        const item = insertMedia({
-          id,
-          kind: kind.kind,
-          name: displayName(file.name, kind.kind),
-          alt,
-          mimeType: kind.kind === 'image' ? 'image/webp' : kind.mimeType,
-          size,
-          width,
-          height,
-          createdBy: actor.id,
-        });
-        host.report({ action: 'media.uploaded', resource: 'media', actorId: actor.id, targetId: id, targetLabel: item.name });
-        announceMediaChanged(host.access);
-        return context.json({ success: true as const, message: 'Uploaded', data: { item } }, 201);
-      } catch {
-        await Promise.all(written.map((key) => host.storage.delete(key).catch(() => false)));
+      const alt = typeof body.alt === 'string' ? body.alt : '';
+      const stored = await storeMedia(host.storage, { name: file.name, type: file.type, data: Buffer.from(await file.arrayBuffer()), alt, createdBy: actor.id });
+      if (!stored.ok) {
+        if (stored.code === 'FILE_TOO_LARGE') return refuse(context, 413, `File too large (max ${Math.round(stored.maxBytes / 1024 / 1024)}MB)`, 'FILE_TOO_LARGE');
+        if (stored.code === 'INVALID_FILE_TYPE') return refuse(context, 400, 'Only JPG, PNG or WebP photos and PDF or Office documents are accepted', 'INVALID_FILE_TYPE');
         return refuse(context, 400, 'The file could not be processed', 'UPLOAD_FAILED');
       }
+      const { item } = stored;
+      host.report({ action: 'media.uploaded', resource: 'media', actorId: actor.id, targetId: item.id, targetLabel: item.name });
+      announceMediaChanged(host.access);
+      return context.json({ success: true as const, message: 'Uploaded', data: { item } }, 201);
     })
     .patch('/:id', guard.allow(host.access.upload), jsonInput(mediaUpdateSchema), (context) => {
       const actor = guard.actor(context);
