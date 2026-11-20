@@ -56,6 +56,8 @@ async function enableTwoFactor(browser: Browser): Promise<{ secret: string; reco
   expect(setup.status).toBe(200);
   const secret = setup.body.data.secret as string;
   expect(setup.body.data.otpauthUrl).toContain(`secret=${secret}`);
+  // Authenticator apps list the account under the school's name.
+  expect(setup.body.data.otpauthUrl).toMatch(/^otpauth:\/\/totp\/Al%20Bashiroh:.*[?&]issuer=Al\+Bashiroh(&|$)/);
   const enabled = await send(browser, '/api/auth/two-factor/enable', {
     method: 'POST',
     body: { code: totpCode(secret, totpStep()) },
