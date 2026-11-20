@@ -2,11 +2,14 @@ import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
 import tailwindcss from '@tailwindcss/vite';
 import devServer, { defaultOptions } from '@hono/vite-dev-server';
-import 'dotenv/config';
+import dotenv from 'dotenv';
 import { resolve } from 'path';
 import { readdirSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+
+// dotenv 17+ announces every load on stderr unless asked not to.
+dotenv.config({ quiet: true });
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
