@@ -5,6 +5,7 @@ import type { AccessRule } from '../shared/security/access';
 /** The admin sidebar's groups, in the order they show. */
 export const ADMIN_GROUPS = [
   { key: 'main', label: null },
+  { key: 'content', label: 'Konten' },
   { key: 'system', label: 'Sistem' },
 ] as const;
 export type AdminGroup = (typeof ADMIN_GROUPS)[number]['key'];

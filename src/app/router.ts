@@ -1,11 +1,13 @@
-import { History, KeyRound, LayoutDashboard, UsersRound } from 'lucide-vue-next';
+import { History, Images, KeyRound, LayoutDashboard, UsersRound } from 'lucide-vue-next';
 import { createRouter, createWebHistory, type RouteRecordRaw, type RouterScrollBehavior } from 'vue-router';
 import { activityAccess } from '../features/activity/web';
 import { rolesAccess, useAuthSession } from '../features/auth/web';
 import { usersAccess } from '../features/users/web';
+import { mediaAccess } from '../features/media/web';
 import { canEnter } from './navigation';
 import ActivityPage from './pages/admin/ActivityPage.vue';
 import DashboardPage from './pages/admin/DashboardPage.vue';
+import MediaPage from './pages/admin/MediaPage.vue';
 import PasswordPage from './pages/admin/PasswordPage.vue';
 import ProfilePage from './pages/admin/ProfilePage.vue';
 import RolesPage from './pages/admin/RolesPage.vue';
@@ -42,6 +44,12 @@ export const appRoutes = [
     name: 'dashboard',
     component: DashboardPage,
     meta: { requiresAuth: true, admin: { group: 'main', label: 'Beranda', icon: LayoutDashboard } },
+  },
+  {
+    path: '/admin/media',
+    name: 'media',
+    component: MediaPage,
+    meta: { requiresAuth: true, requiresAccess: mediaAccess('media').view, admin: { group: 'content', label: 'Media', icon: Images } },
   },
   {
     path: '/admin/pengguna',

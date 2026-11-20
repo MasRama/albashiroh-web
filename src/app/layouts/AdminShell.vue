@@ -3,8 +3,10 @@ import { ExternalLink, LogOut, Menu, ShieldCheck, UserRound, X } from 'lucide-vu
 import { computed, ref, watch } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { useAuthSession } from '../../features/auth/web';
+import { provideMediaClient } from '../../features/media/web';
 import { AbAvatar, AbToaster } from '../../shared/ui';
 import { roleLabel } from '../account';
+import { mediaClient } from '../cms';
 import BrandMark from '../brand/BrandMark.vue';
 import { adminNavigation, sectionOf } from '../navigation';
 
@@ -15,6 +17,8 @@ import { adminNavigation, sectionOf } from '../navigation';
  * says, with the account and the way out at the bottom.
  */
 const route = useRoute();
+// Every photo and document field in the panel uploads through this client.
+provideMediaClient(mediaClient);
 const router = useRouter();
 const session = useAuthSession();
 
