@@ -85,6 +85,25 @@ never a broken path.
   <img src="docs/screenshots/admin-entries-phone.webp" alt="The news list on a phone" width="17%">
 </p>
 
+## The public site
+
+The Yayasan site is served at the root (`/`, `/profil`, `/takhosus`,
+`/keasramaan`, `/berita`, `/ppdb`, ...) and each school's portal under `/smp`
+and `/sma`. Every page is listed once in `src/app/site-map.ts`, which both
+sides read: the browser router builds its routes from it, and the server uses
+it to answer each address with its own title, description, canonical link and
+link-preview tags, a `404` status for an address the site does not have (or an
+article that is not published), and `/sitemap.xml` with every published
+article. `/robots.txt` keeps `/admin` and `/login` out of search engines.
+Canonical and preview links use `APP_URL`, so set it to the public address
+(`https://albashiroh.sch.id`).
+
+Home pages ship in the first download; inner pages and the whole admin panel
+load on first visit, so a visitor never downloads the editor. A missing photo
+is drawn as a solid block in the section's colour carrying the entry's title.
+Accent words in a home page's headline are typed between stars in
+**Pengaturan portal**, as in `Generasi Qur'ani yang *bertaqwa*`.
+
 ## Checks
 
 ```bash

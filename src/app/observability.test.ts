@@ -165,13 +165,13 @@ describe('request lifecycle logging', () => {
       seen.push(args);
     }) as typeof Logger.info);
     await app.request('/assets/app.js');
-    await app.request('/landing/hero.webp');
+    await app.request('/brand/logo-smp.png');
     await app.request('/nara.png');
     const paths = seen
       .filter(([message]) => message === 'HTTP request')
       .map(([, payload]) => (payload as Record<string, unknown>).path);
     expect(paths).not.toContain('/assets/app.js');
-    expect(paths).not.toContain('/landing/hero.webp');
+    expect(paths).not.toContain('/brand/logo-smp.png');
     expect(paths).not.toContain('/nara.png');
   });
 

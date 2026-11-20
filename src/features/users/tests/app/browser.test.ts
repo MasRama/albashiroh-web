@@ -403,9 +403,10 @@ describe('users browser surfaces', () => {
     expect(fetchRequests).toContainEqual({ method: 'POST', path: '/api/auth/change-password' });
   });
 
-  it('changes landing calls to match the current session', async () => {
+  it('keeps the public home free of admin calls, signed in or not', async () => {
+    // This application's public site is the school's, for visitors: staff reach the panel at /admin.
     await mountAt('/');
-    expect(container.querySelector('a[href="/admin/masuk"]')).not.toBeNull();
+    expect(container.querySelector('a[href="/admin/masuk"]')).toBeNull();
     expect(container.querySelector('a[href="/admin"]')).toBeNull();
 
     await startAuthenticatedUser();
@@ -413,7 +414,7 @@ describe('users browser surfaces', () => {
     await router.isReady();
     await nextTick();
 
-    expect(container.querySelector('a[href="/admin"]')).not.toBeNull();
+    expect(container.querySelector('a[href="/admin"]')).toBeNull();
     expect(container.querySelector('a[href="/admin/masuk"]')).toBeNull();
   });
 

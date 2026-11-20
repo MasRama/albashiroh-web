@@ -123,10 +123,12 @@ describe('production browser and static delivery', () => {
     expect(existsSync(path.join(projectRoot, 'dist'))).toBe(false);
   });
 
-  it('serves the SPA shell for every shipped browser route and unknown browser paths', async () => {
-    for (const pathname of ['/', '/login', '/register', '/dashboard', '/profile', '/users', '/roles', '/this-route-does-not-exist']) {
+  it('serves the SPA shell for every shipped browser route, and with a 404 for unknown browser paths', async () => {
+    const shipped = ['/', '/login', '/admin', '/admin/masuk', '/profil', '/berita', '/ppdb', '/smp', '/smp/tanya-jawab', '/sma/alumni'];
+    const unknown = ['/register', '/dashboard', '/smp/alumni', '/berita/belum-terbit', '/this-route-does-not-exist'];
+    for (const pathname of [...shipped, ...unknown]) {
       const response = await get(pathname);
-      expect(response.status, pathname).toBe(200);
+      expect(response.status, pathname).toBe(shipped.includes(pathname) ? 200 : 404);
       expect(response.headers.get('content-type'), pathname).toContain('text/html');
       expect(await response.text(), pathname).toContain('<div id="app"></div>');
       expect(response.headers.get('cache-control'), pathname).toBe('no-cache');
@@ -158,7 +160,7 @@ describe('production browser and static delivery', () => {
   it('returns 404 for missing assets and traversal attempts without serving HTML or source files', async () => {
     for (const pathname of [
       '/assets/does-not-exist.js',
-      '/landing/does-not-exist.webp',
+      '/brand/does-not-exist.png',
       '/assets/%2e%2e/server.js',
       '/assets//etc/passwd',
       '/assets/%5C..%5Cserver.js',

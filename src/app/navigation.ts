@@ -16,6 +16,8 @@ declare module 'vue-router' {
     requiresAccess?: AccessRule;
     /** An admin screen: rendered in the admin shell. With `label` it is listed in the sidebar under `group`. */
     admin?: { group: AdminGroup; label?: string; icon?: Component; section?: string };
+    /** A public page: rendered in the site's frame for this portal. */
+    site?: { portal: 'yayasan' | 'smp' | 'sma' };
   }
 }
 
