@@ -133,6 +133,32 @@ describe('RichTextEditor', () => {
     expect(container.querySelector('.rte-link')).toBeNull();
   });
 
+  it('refuses a link to anything but a web, mail or phone address, and keeps the bar open to fix it', async () => {
+    const value = mount('<p>Klik</p>');
+    await settle();
+    editorRef.value!.editor!.commands.selectAll();
+    await settle();
+    tool('link').click();
+    await settle();
+    const input = container.querySelector<HTMLInputElement>('.rte-link input')!;
+    for (const href of ['javascript:alert(1)', 'JaVaScRiPt:alert(1)', 'data:text/html,x', 'vbscript:x']) {
+      input.value = href;
+      input.dispatchEvent(new Event('input'));
+      container.querySelector<HTMLButtonElement>('.rte-link-save')!.click();
+      await settle();
+      expect(value.value).not.toContain('href');
+      expect(container.querySelector('.rte-link-error')?.textContent).toContain('diawali https://');
+      expect(input.getAttribute('aria-invalid')).toBe('true');
+    }
+    // A bare address with a port is still a web address.
+    input.value = 'albashiroh.sch.id:8080/ppdb';
+    input.dispatchEvent(new Event('input'));
+    container.querySelector<HTMLButtonElement>('.rte-link-save')!.click();
+    await settle();
+    expect(value.value).toContain('href="https://albashiroh.sch.id:8080/ppdb"');
+    expect(container.querySelector('.rte-link')).toBeNull();
+  });
+
   it('reports an empty editor as empty text', async () => {
     const value = mount('<p>Hapus saya</p>');
     await settle();

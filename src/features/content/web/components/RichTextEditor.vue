@@ -127,16 +127,33 @@ const groups = computed<Tool[][]>(() => [
 const linking = ref(false);
 const linkHref = ref('');
 const linkInput = ref<HTMLInputElement>();
+const linkError = ref(false);
 async function openLink(): Promise<void> {
   linkHref.value = (editor.value?.getAttributes('link').href as string | undefined) ?? '';
+  linkError.value = false;
   linking.value = true;
   await nextTick();
   linkInput.value?.focus();
 }
+/** A web, mail or phone address as typed, a bare one ("albashiroh.sch.id") getting its https://; anything else is refused. */
+function linkTarget(href: string): string | null {
+  if (/^(https?:\/\/|mailto:|tel:|\/(?!\/))/i.test(href)) return href;
+  // Another scheme ("javascript:", "data:"), but not a bare host with a port ("sekolah.id:8080").
+  if (/^[a-z][a-z0-9+.-]*:(?!\d)/i.test(href)) return null;
+  return `https://${href}`;
+}
 function saveLink(): void {
   const href = linkHref.value.trim();
   if (!href) chain().extendMarkRange('link').unsetLink().run();
-  else chain().extendMarkRange('link').setLink({ href: /^(https?:|mailto:|tel:|\/)/i.test(href) ? href : `https://${href}` }).run();
+  else {
+    const target = linkTarget(href);
+    linkError.value = target === null;
+    if (target === null) {
+      linkInput.value?.focus();
+      return;
+    }
+    chain().extendMarkRange('link').setLink({ href: target }).run();
+  }
   linking.value = false;
 }
 function removeLink(): void {
@@ -178,10 +195,11 @@ function insertImage(item: MediaItem): void {
       <!-- novalidate: a bare address ("albashiroh.sch.id") is fine here; saveLink adds its https://. -->
       <form v-if="linking" class="rte-link" novalidate @submit.prevent="saveLink">
         <label class="ab-visually-hidden" :for="`${id}-link`">Alamat tautan</label>
-        <input :id="`${id}-link`" ref="linkInput" v-model="linkHref" type="url" inputmode="url" placeholder="https://…" @keydown.esc.prevent="linking = false" />
+        <input :id="`${id}-link`" ref="linkInput" v-model="linkHref" type="url" inputmode="url" placeholder="https://…" :aria-invalid="linkError || undefined" :aria-describedby="linkError ? `${id}-link-error` : undefined" @input="linkError = false" @keydown.esc.prevent="linking = false" />
         <button type="submit" class="rte-link-save">Pasang</button>
         <button v-if="is('link')" type="button" class="rte-link-plain" @click="removeLink">Lepas</button>
         <button type="button" class="rte-link-plain" @click="linking = false">Batal</button>
+        <p v-if="linkError" :id="`${id}-link-error`" class="rte-link-error" role="alert">Tulis alamat web lengkap, diawali https://</p>
       </form>
       <EditorContent :editor="editor" class="rte-body" />
     </div>
@@ -224,6 +242,8 @@ function insertImage(item: MediaItem): void {
 .rte-link input { flex: 1 1 220px; min-width: 0; height: 38px; padding: 0 12px; border: 1.5px solid var(--ab-line-strong); border-radius: 10px; background: #fff; font: inherit; }
 .rte-link input:focus { border-color: var(--ab-forest); outline: none; box-shadow: var(--ab-focus); }
 .rte-link-save { height: 38px; padding: 0 14px; border-radius: 10px; background: var(--ab-forest); color: #fff; font-weight: 800; }
+.rte-link input[aria-invalid='true'] { border-color: var(--ab-red); }
+.rte-link-error { flex-basis: 100%; margin: 0; color: var(--ab-red); font-size: 13.5px; font-weight: 600; }
 .rte-link-plain { height: 38px; padding: 0 10px; border-radius: 10px; color: var(--ab-ink-2); font-weight: 700; }
 .rte-body :deep(.rte-content) { min-height: 260px; max-height: 70vh; overflow-y: auto; padding: 18px 20px; outline: none; }
 .rte--compact .rte-body :deep(.rte-content) { min-height: 150px; }
