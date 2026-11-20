@@ -1,9 +1,10 @@
-import { History, Images, KeyRound, LayoutDashboard, UsersRound } from 'lucide-vue-next';
+import { ClipboardList, History, Images, KeyRound, LayoutDashboard, UsersRound } from 'lucide-vue-next';
 import { createRouter, createWebHistory, type RouteLocationNormalized, type RouteRecordRaw, type RouterScrollBehavior } from 'vue-router';
 import { activityAccess } from '../features/activity/web';
 import { rolesAccess, useAuthSession } from '../features/auth/web';
 import { usersAccess } from '../features/users/web';
 import { mediaAccess } from '../features/media/web';
+import { ppdbAccess } from '../features/ppdb/web';
 import { contentAccess, PORTALS, type Portal } from '../features/content/web';
 import { loadAdminShell } from './admin-shell';
 import { PORTAL_ICON, PORTAL_LABEL, portalRoute } from './content-admin';
@@ -25,6 +26,9 @@ const PortalPage = () => import('./pages/admin/PortalPage.vue');
 const PortalSettingsPage = () => import('./pages/admin/PortalSettingsPage.vue');
 const EntriesPage = () => import('./pages/admin/EntriesPage.vue');
 const EntryPage = () => import('./pages/admin/EntryPage.vue');
+const ApplicantsPage = () => import('./pages/admin/ApplicantsPage.vue');
+const ApplicantPage = () => import('./pages/admin/ApplicantPage.vue');
+const PpdbSettingsPage = () => import('./pages/admin/PpdbSettingsPage.vue');
 
 /**
  * Each portal's content screens, under the permission that portal's API
@@ -71,6 +75,25 @@ export const appRoutes = [
     name: 'dashboard',
     component: DashboardPage,
     meta: { requiresAuth: true, admin: { group: 'main', label: 'Beranda', icon: LayoutDashboard } },
+  },
+  {
+    path: '/admin/ppdb',
+    name: 'ppdb',
+    component: ApplicantsPage,
+    meta: { requiresAuth: true, requiresAccess: ppdbAccess('ppdb').view, admin: { group: 'main', label: 'PPDB', icon: ClipboardList } },
+  },
+  {
+    path: '/admin/ppdb/pengaturan',
+    name: 'ppdb-settings',
+    component: PpdbSettingsPage,
+    meta: { requiresAuth: true, requiresAccess: ppdbAccess('ppdb').manage, admin: { group: 'main', section: 'ppdb' } },
+  },
+  {
+    path: '/admin/ppdb/:id([0-9a-f-]{36})',
+    name: 'ppdb-applicant',
+    component: ApplicantPage,
+    props: (route) => ({ id: String(route.params.id) }),
+    meta: { requiresAuth: true, requiresAccess: ppdbAccess('ppdb').view, admin: { group: 'main', section: 'ppdb' } },
   },
   ...PORTALS.flatMap(portalRoutes),
   {

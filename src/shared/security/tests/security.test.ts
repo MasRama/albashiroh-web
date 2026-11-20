@@ -325,6 +325,22 @@ describe('rate limiting', () => {
     expect(now).toBe(0);
   });
 
+  it('can count only the requests that were accepted, so refused sends cost nothing', async () => {
+    const limiter = createRateLimiter({ maxRequests: 2, windowMs: 60_000, name: 'test-counts', counts: (context) => context.res.status === 201, now: () => 0 });
+    const probe = new Hono();
+    probe.use('*', limiter.middleware);
+    probe.post('/form', async (context) => ((await context.req.text()) === 'ok' ? context.json({ ok: true }, 201) : context.json({ ok: false }, 409)));
+    const post = (body: string) => probe.request('/form', { method: 'POST', body });
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const refused = await post('bad');
+      expect(refused.status).toBe(409);
+      expect(refused.headers.get('X-RateLimit-Remaining')).toBe('2');
+    }
+    expect((await post('ok')).headers.get('X-RateLimit-Remaining')).toBe('1');
+    expect((await post('ok')).status).toBe(201);
+    expect((await post('ok')).status).toBe(429);
+  });
+
   it('exposes global limit metadata on API responses but not on health probes', async () => {
     const api = await app.request('/api/auth/me');
     expect(api.headers.get('X-RateLimit-Limit')).toBe(String(env.RATE_LIMIT_MAX));
