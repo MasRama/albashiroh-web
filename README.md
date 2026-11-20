@@ -181,6 +181,10 @@ npm run setup
 npm start
 ```
 
+`npm run import:old-site -- --smp <file> --sma <file>` brings in the content of
+the old SMP and SMA sites without ever writing to their files, and can be run
+again safely; see [`docs/deployment.md`](./docs/deployment.md#content-from-the-old-sites).
+
 Behind the proxy set `HOST=127.0.0.1` and `TRUST_PROXY=true`. The database is
 backed up every 24 hours into `database/backups/` (the newest 7 are kept);
 copy that directory and `storage/` off the host as well.

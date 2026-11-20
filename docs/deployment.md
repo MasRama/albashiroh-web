@@ -54,6 +54,28 @@ NARA_ADMIN_NAME='Your Name' NARA_ADMIN_EMAIL='you@example.com' \
   NARA_ADMIN_PASSWORD='a-long-password' npm run setup
 ```
 
+### Content from the old sites
+
+The old SMP and SMA sites' databases can be imported once the database exists.
+Work from copies of the backups; the import also copies each file to a temp
+folder and opens only that copy, read-only, so the file you name is never
+written to:
+
+```bash
+npm run import:old-site -- --smp /path/to/old-smp.sqlite3 --sma /path/to/old-sma.sqlite3
+```
+
+It prints, per type, how many records it found and imported, how many were
+already there, and how many came in without a photo. The old uploads were lost,
+so those entries carry a note in the admin ("Dari situs lama: ...") and gallery
+photos and documents arrive as drafts until their file is uploaded. Photos that
+were pasted into old articles are kept. Visi, misi and contact fill only fields
+that are still empty. Running it again adds only records it has not imported
+before and leaves edited entries alone. The old admissions page (form link,
+payment details) is not imported: set those in **Admin > PPDB > Pengaturan**.
+Run it from the project directory, as the application's user, so photos land
+in its `storage/`.
+
 ## Run
 
 ```bash
