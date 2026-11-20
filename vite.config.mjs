@@ -44,6 +44,7 @@ function applicationRuntime() {
  * page never uses, so `import { mediaAccess } from '.../media/web'` on the
  * public site does not ship the media picker, nor the admin component kit.
  * Their styles stay side effects and come along with every component that is used.
+ * This needs components to keep their code in <script setup>; src/app/tests/components-side-effect-free.test.ts checks it.
  */
 function componentsAreSideEffectFree() {
   return {
