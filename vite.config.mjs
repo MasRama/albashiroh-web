@@ -38,6 +38,24 @@ function applicationRuntime() {
   };
 }
 
+/**
+ * Single-file components only define a component: importing one runs nothing
+ * else. Telling the bundler so lets it drop the ones a barrel re-exports but a
+ * page never uses, so `import { mediaAccess } from '.../media/web'` on the
+ * public site does not ship the media picker, nor the admin component kit.
+ * Their styles stay side effects and come along with every component that is used.
+ */
+function componentsAreSideEffectFree() {
+  return {
+    name: 'albashiroh-components-side-effect-free',
+    enforce: 'post',
+    apply: 'build',
+    transform(_code, id) {
+      return /\/src\/.+\.vue$/.test(id) ? { moduleSideEffects: false } : null;
+    },
+  };
+}
+
 export default defineConfig({
   plugins: [
     applicationRuntime(),
@@ -51,6 +69,7 @@ export default defineConfig({
     }),
     tailwindcss(),
     vue(),
+    componentsAreSideEffectFree(),
   ],
   root: 'resources',
   publicDir: '../public',

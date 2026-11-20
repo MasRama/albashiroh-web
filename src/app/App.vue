@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onUnmounted } from 'vue';
 import { RouterView, useRoute, useRouter } from 'vue-router';
-import AdminShell from './layouts/AdminShell.vue';
+import { adminShell } from './admin-shell';
 import SiteLayout from './layouts/SiteLayout.vue';
 import { startLiveUpdates } from './live-updates';
 import { portalOfPath } from './site-map';
@@ -14,9 +14,9 @@ onUnmounted(startLiveUpdates(useRouter()));
 
 <template>
   <RouterView v-slot="{ Component }">
-    <AdminShell v-if="route.meta.admin">
+    <component :is="adminShell" v-if="route.meta.admin && adminShell">
       <component :is="Component" />
-    </AdminShell>
+    </component>
     <SiteLayout v-else-if="sitePortal" :portal="sitePortal">
       <component :is="Component" />
     </SiteLayout>

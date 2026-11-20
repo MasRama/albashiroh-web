@@ -5,6 +5,7 @@ import { rolesAccess, useAuthSession } from '../features/auth/web';
 import { usersAccess } from '../features/users/web';
 import { mediaAccess } from '../features/media/web';
 import { contentAccess, PORTALS, type Portal } from '../features/content/web';
+import { loadAdminShell } from './admin-shell';
 import { PORTAL_ICON, PORTAL_LABEL, portalRoute } from './content-admin';
 import { canEnter } from './navigation';
 import SiteNotFound from './pages/site/SiteNotFound.vue';
@@ -170,6 +171,11 @@ router.beforeEach(async (to) => {
   }
 
   return true;
+});
+
+// After every guard, so a visitor turned away from the admin never fetches its frame.
+router.beforeResolve(async (to) => {
+  if (to.meta.admin) await loadAdminShell();
 });
 
 export default router;
