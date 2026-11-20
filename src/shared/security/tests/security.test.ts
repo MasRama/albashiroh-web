@@ -74,6 +74,14 @@ describe('security headers', () => {
     expect(csp).not.toContain('ws:');
   });
 
+  it('loads styles and fonts from the site itself only', async () => {
+    for (const production of [false, true]) {
+      const csp = (await probeApp(production).request('/ok')).headers.get('Content-Security-Policy') ?? '';
+      expect(csp).toContain(`style-src 'self' 'unsafe-inline';`);
+      expect(csp).toContain(`font-src 'self' data:;`);
+    }
+  });
+
   it('covers error responses, not just success', async () => {
     const response = await probeApp(false).request('/boom');
     expect(response.status).toBe(500);

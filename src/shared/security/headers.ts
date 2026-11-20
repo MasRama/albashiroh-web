@@ -12,11 +12,10 @@ const PERMISSIONS_POLICY =
 function contentSecurityPolicy(isProduction: boolean): string {
   // Production Vite emits external module scripts, so script-src can stay
   // strict. Vue still applies dynamic style attributes, so style-src keeps
-  // 'unsafe-inline'.
+  // 'unsafe-inline'. Fonts are bundled with the site, so neither styles nor
+  // fonts load from another origin.
   const scriptSrc = isProduction ? `'self'` : `'self' 'unsafe-inline'`;
-  const styleSrc = isProduction
-    ? `'self' 'unsafe-inline' https://rsms.me https://fonts.googleapis.com`
-    : `'self' 'unsafe-inline' https://rsms.me https://fonts.googleapis.com`;
+  const styleSrc = `'self' 'unsafe-inline'`;
   const connectSrc = isProduction
     ? `'self' https: wss:`
     : `'self' https: wss: ws:`;
@@ -25,7 +24,7 @@ function contentSecurityPolicy(isProduction: boolean): string {
     `script-src ${scriptSrc}`,
     `style-src ${styleSrc}`,
     `img-src 'self' data: blob: https:`,
-    `font-src 'self' data: https:`,
+    `font-src 'self' data:`,
     `connect-src ${connectSrc}`,
     `media-src 'self'`,
     `object-src 'none'`,
