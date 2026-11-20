@@ -123,6 +123,33 @@ trailing slash answers `301` to the same address without it.
   <img src="docs/screenshots/site-artikel-phone.webp" alt="An article on a phone" width="17%">
 </p>
 
+## PPDB
+
+Families register online on `/ppdb`: they pick SMP or SMA and fill in the
+student, both parents, the address and phone number, whether the student will
+board, and how the registration fee is paid (the fields of the school's
+earlier Tally form). The browser checks the form with the same rules as the
+server. A registration gets a number per level and year (`SMP-2026-0001`), and
+the same NISN cannot register twice for one level in a year. Spam is held off
+without a puzzle: a hidden field only scripts fill in, a signed form token that
+must be at least 5 seconds old and at most 12 hours, and at most
+`PPDB_SUBMIT_MAX` registrations (default 5) per address per hour.
+
+The form is closed until someone with `ppdb.manage` opens it in **PPDB →
+Pengaturan formulir**, where they also set the academic year and, per level,
+what a family reads once registered (payment and next steps, plain text) and
+the parents' WhatsApp group link. Nothing about payment or contacts is kept in
+the code.
+
+**PPDB** in the admin lists the registrations by level, status and search, and
+downloads them as Excel or CSV with the same filter (NIK, NISN and phone stay
+text in Excel; CSV cells cannot run as formulas). A registration's page shows
+everything the family sent, a WhatsApp link, and its status (**Baru**,
+**Diverifikasi**, **Diterima**, **Tidak diterima**) with a committee note.
+The role `panitia-ppdb` holds `ppdb.view` and `ppdb.manage`; a role with only
+`ppdb.view` can read and download but not change anything. Reviews, deletions,
+downloads and form changes are recorded in **Aktivitas**.
+
 ## Checks
 
 ```bash
