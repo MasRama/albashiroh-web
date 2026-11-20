@@ -170,6 +170,10 @@ body.ab-locked { overflow: hidden; }
 .ab-prose h4 { font-size: 1.08em; }
 .ab-prose a { color: var(--ab-smp-deep); font-weight: 600; text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 3px; }
 .ab-prose ul, .ab-prose ol { margin: 0 0 1em; padding-left: 1.4em; }
+/* The base reset drops list markers; an article keeps its bullets and numbers. */
+.ab-prose ul { list-style: disc; }
+.ab-prose ol { list-style: decimal; }
+.ab-prose li::marker { color: var(--ab-mute); font-weight: 700; }
 .ab-prose li { margin: .3em 0; }
 .ab-prose li > p { margin: 0; }
 .ab-prose blockquote { margin: 1.4em 0; padding: 4px 0 4px 18px; border-left: 4px solid var(--ab-sun); color: var(--ab-ink-2); font-size: 1.05em; font-weight: 600; }
