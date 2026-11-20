@@ -63,6 +63,8 @@ const parts = computed(() => emphasize(props.title));
 .hero-foot dt { margin-top: 4px; color: rgba(255, 255, 255, .66); font-size: 13.5px; font-weight: 600; }
 .hero-pic { position: relative; padding: 14px 14px 14px 0; }
 .hero-photo { height: 100%; overflow: hidden; border-radius: 22px; }
+/* With no photo yet, the block's title sits at the top: the card over the photo's lower corner would hide it. */
+.hero-photo :deep(.sp--cover) { justify-content: flex-start; padding-top: calc(clamp(14px, 6%, 26px) + 52px); }
 @media (max-width: 960px) {
   .hero-box { min-height: 0; grid-template-columns: 1fr; }
   .hero-text { padding: 56px 40px 36px; }
