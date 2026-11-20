@@ -128,6 +128,32 @@ describe('media library', () => {
     expect((await app.request(`/media/${pdf.id}/md.webp`)).status).toBe(404);
   });
 
+  it('keeps a document address ending in its type when the name loses or changes its extension', async () => {
+    const pdf = await uploaded(EDITOR, PDF, 'Jadwal UAS.pdf', 'application/pdf');
+    const rename = async (name: string, revision: number) => {
+      const response = await app.request(`/api/media/${pdf.id}`, {
+        method: 'PATCH',
+        headers: { ...as(EDITOR), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, alt: '', revision }),
+      });
+      return ((await response.json()) as { data: { item: { url: string; revision: number } } }).data.item;
+    };
+
+    const plain = await rename('Jadwal UAS Final', pdf.revision);
+    expect(plain.url).toBe(`/media/${pdf.id}/jadwal-uas-final.pdf`);
+    const moved = await app.request(pdf.url);
+    expect(moved.status).toBe(301);
+    expect(moved.headers.get('location')).toBe(plain.url);
+    const opened = await app.request(plain.url);
+    expect(opened.status).toBe(200);
+    expect(opened.headers.get('content-disposition')).toBe('inline; filename="jadwal-uas-final.pdf"');
+
+    // A name with a dot or a wrong extension still serves under the type's own.
+    const odd = await rename('Laporan v1.2.docx', plain.revision);
+    expect(odd.url).toBe(`/media/${pdf.id}/laporan-v1-2-docx.pdf`);
+    expect((await app.request(`/media/${pdf.id}/laporan-v1-2.docx`)).status).toBe(404);
+  });
+
   it('refuses files whose bytes are not what they claim, and unsupported types', async () => {
     const fake = await upload(EDITOR, Buffer.from('<script>alert(1)</script>'), 'foto.jpg', 'image/jpeg');
     expect(fake.status).toBe(400);

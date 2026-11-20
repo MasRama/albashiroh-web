@@ -175,9 +175,9 @@ export function createMediaFileRoutes(host: Pick<MediaServerHost, 'storage'>) {
       key = `media/${id}/${variant}.webp`;
       contentType = 'image/webp';
     } else {
-      const name = downloadName(item.name);
+      const name = downloadName(item.name, item.mimeType);
       if (file !== name) {
-        // A link copied before a rename (same document, same extension) moves to the current name.
+        // A link copied before a rename (same document, same type's extension) moves to the current name.
         if (extension(file) !== extension(name)) return context.notFound();
         // Cached for an hour only: the name may change again.
         context.header('Cache-Control', 'public, max-age=3600');

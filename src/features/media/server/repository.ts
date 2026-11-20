@@ -27,13 +27,28 @@ interface MediaRow {
 
 const VARIANTS = Object.keys(IMAGE_VARIANTS) as ImageVariant[];
 
-/** The file name a document is served under: readable, and safe in a URL and a header. */
-export function downloadName(name: string): string {
-  const dot = name.lastIndexOf('.');
-  const extension = dot > 0 ? name.slice(dot + 1).toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 8) : '';
-  const stem = (dot > 0 ? name.slice(0, dot) : name)
+/** The extension each document type is served with. */
+const TYPE_EXTENSIONS: Record<string, string> = {
+  'application/pdf': 'pdf',
+  'application/msword': 'doc',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+  'application/vnd.ms-excel': 'xls',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
+  'application/vnd.ms-powerpoint': 'ppt',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'pptx',
+};
+
+/**
+ * The file name a document is served under: readable, safe in a URL and a
+ * header, and always ending in its stored type's extension, whatever the
+ * name says, so a rename never turns a PDF into an address without `.pdf`.
+ */
+export function downloadName(name: string, mimeType: string): string {
+  const extension = TYPE_EXTENSIONS[mimeType] ?? '';
+  const own = extension ? new RegExp(`\\.${extension}$`, 'i') : null;
+  const stem = (own ? name.trim().replace(own, '') : name)
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
@@ -45,8 +60,8 @@ export function variantUrl(id: string, variant: ImageVariant): string {
   return `${MEDIA_PUBLIC_PATH}/${id}/${variant}.webp`;
 }
 
-function fileUrl(row: Pick<MediaRow, 'id' | 'name'>): string {
-  return `${MEDIA_PUBLIC_PATH}/${row.id}/${downloadName(row.name)}`;
+function fileUrl(row: Pick<MediaRow, 'id' | 'name' | 'mime_type'>): string {
+  return `${MEDIA_PUBLIC_PATH}/${row.id}/${downloadName(row.name, row.mime_type)}`;
 }
 
 function toItem(row: MediaRow): MediaItem {
