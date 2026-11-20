@@ -1,4 +1,5 @@
 import { csrfHeaders, ensureCsrfToken } from '../features/auth/web';
+import { createContentClient } from '../features/content/web';
 import { createMediaClient } from '../features/media/web';
 
 /**
@@ -9,3 +10,4 @@ import { createMediaClient } from '../features/media/web';
 const options = { ensureToken: ensureCsrfToken, headers: csrfHeaders };
 
 export const mediaClient = createMediaClient(options);
+export const contentClient = createContentClient(options);

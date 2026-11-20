@@ -157,3 +157,22 @@ body.ab-locked { overflow: hidden; }
   .ab { background: #fff; min-height: 0; }
   .ab-no-print { display: none !important; }
 }
+
+/* Article text: what the editor writes and what a news or profile page shows. */
+.ab-prose { color: var(--ab-ink); font-size: 16.5px; line-height: 1.7; overflow-wrap: anywhere; }
+.ab-prose > :first-child { margin-top: 0; }
+.ab-prose > :last-child { margin-bottom: 0; }
+.ab-prose p { margin: 0 0 1em; }
+.ab-prose h2, .ab-prose h3, .ab-prose h4 { margin: 1.6em 0 .5em; font-family: var(--ab-display); font-weight: 800; line-height: 1.15; letter-spacing: -.01em; }
+.ab-prose h2 { font-size: 1.55em; }
+.ab-prose h3 { font-size: 1.25em; }
+.ab-prose h4 { font-size: 1.08em; }
+.ab-prose a { color: var(--ab-smp-deep); font-weight: 600; text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 3px; }
+.ab-prose ul, .ab-prose ol { margin: 0 0 1em; padding-left: 1.4em; }
+.ab-prose li { margin: .3em 0; }
+.ab-prose li > p { margin: 0; }
+.ab-prose blockquote { margin: 1.4em 0; padding: 4px 0 4px 18px; border-left: 4px solid var(--ab-sun); color: var(--ab-ink-2); font-size: 1.05em; font-weight: 600; }
+.ab-prose hr { height: 2px; margin: 2em 0; border: 0; background: var(--ab-line); }
+.ab-prose img { display: block; max-width: 100%; height: auto; margin: 1.4em 0; border-radius: var(--ab-radius); }
+.ab-prose figure { margin: 1.4em 0; }
+.ab-prose figcaption { margin-top: 8px; color: var(--ab-mute); font-size: .88em; }

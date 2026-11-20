@@ -1,9 +1,11 @@
 import { History, Images, KeyRound, LayoutDashboard, UsersRound } from 'lucide-vue-next';
-import { createRouter, createWebHistory, type RouteRecordRaw, type RouterScrollBehavior } from 'vue-router';
+import { createRouter, createWebHistory, type RouteLocationNormalized, type RouteRecordRaw, type RouterScrollBehavior } from 'vue-router';
 import { activityAccess } from '../features/activity/web';
 import { rolesAccess, useAuthSession } from '../features/auth/web';
 import { usersAccess } from '../features/users/web';
 import { mediaAccess } from '../features/media/web';
+import { contentAccess, PORTALS, type Portal } from '../features/content/web';
+import { PORTAL_ICON, PORTAL_LABEL, portalRoute } from './content-admin';
 import { canEnter } from './navigation';
 import ActivityPage from './pages/admin/ActivityPage.vue';
 import DashboardPage from './pages/admin/DashboardPage.vue';
@@ -16,6 +18,33 @@ import SignInPage from './pages/admin/SignInPage.vue';
 import UsersPage from './pages/admin/UsersPage.vue';
 import HomePage from './pages/HomePage.vue';
 import NotFoundPage from './pages/NotFoundPage.vue';
+
+// Portal content pages carry the article editor; they load on first visit so the public site never downloads it.
+const PortalPage = () => import('./pages/admin/PortalPage.vue');
+const PortalSettingsPage = () => import('./pages/admin/PortalSettingsPage.vue');
+const EntriesPage = () => import('./pages/admin/EntriesPage.vue');
+const EntryPage = () => import('./pages/admin/EntryPage.vue');
+
+/**
+ * Each portal's content screens, under the permission that portal's API
+ * enforces: its overview (the sidebar entry), settings, and its entries.
+ */
+function portalRoutes(portal: Portal): RouteRecordRaw[] {
+  const names = portalRoute(portal);
+  const meta = (extra: { label?: string; icon?: typeof PORTAL_ICON[Portal] } = {}) => ({
+    requiresAuth: true,
+    requiresAccess: contentAccess('content')[portal],
+    admin: { group: 'content' as const, section: names.home, ...extra },
+  });
+  const type = (route: RouteLocationNormalized) => String(route.params.type);
+  return [
+    { path: `/admin/${portal}`, name: names.home, component: PortalPage, props: { portal }, meta: meta({ label: PORTAL_LABEL[portal], icon: PORTAL_ICON[portal] }) },
+    { path: `/admin/${portal}/pengaturan`, name: names.settings, component: PortalSettingsPage, props: { portal }, meta: meta() },
+    { path: `/admin/${portal}/:type`, name: names.entries, component: EntriesPage, props: (route) => ({ portal, type: type(route) }), meta: meta() },
+    { path: `/admin/${portal}/:type/baru`, name: names.create, component: EntryPage, props: (route) => ({ portal, type: type(route), id: null }), meta: meta() },
+    { path: `/admin/${portal}/:type/:id`, name: names.entry, component: EntryPage, props: (route) => ({ portal, type: type(route), id: String(route.params.id) }), meta: meta() },
+  ];
+}
 
 export const appRoutes = [
   {
@@ -45,6 +74,7 @@ export const appRoutes = [
     component: DashboardPage,
     meta: { requiresAuth: true, admin: { group: 'main', label: 'Beranda', icon: LayoutDashboard } },
   },
+  ...PORTALS.flatMap(portalRoutes),
   {
     path: '/admin/media',
     name: 'media',
