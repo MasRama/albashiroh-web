@@ -104,6 +104,25 @@ is drawn as a solid block in the section's colour carrying the entry's title.
 Accent words in a home page's headline are typed between stars in
 **Pengaturan portal**, as in `Generasi Qur'ani yang *bertaqwa*`.
 
+The first download of any public page holds only the site's own code: the
+admin frame, its component kit and the feature components behind the admin
+pages load with the first admin page. `tests/v3/frontend-build.test.ts` builds
+the app and fails if any of them reaches the public entry. An address with a
+trailing slash answers `301` to the same address without it.
+
+<p align="center">
+  <img src="docs/screenshots/site-yayasan-desk.webp" alt="The Yayasan home page, before any photo is uploaded" width="64%">
+  <img src="docs/screenshots/site-yayasan-phone.webp" alt="The Yayasan home page on a phone" width="17%">
+</p>
+<p align="center">
+  <img src="docs/screenshots/site-smp-desk.webp" alt="The SMP portal home" width="64%">
+  <img src="docs/screenshots/site-sma-phone.webp" alt="The SMA portal home on a phone" width="17%">
+</p>
+<p align="center">
+  <img src="docs/screenshots/site-berita-desk.webp" alt="A school's news list, every entry still without a photo" width="64%">
+  <img src="docs/screenshots/site-artikel-phone.webp" alt="An article on a phone" width="17%">
+</p>
+
 ## Checks
 
 ```bash
