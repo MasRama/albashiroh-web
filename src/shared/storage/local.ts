@@ -1,4 +1,4 @@
-import { mkdir, readFile, realpath, stat, unlink, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, realpath, rmdir, stat, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { AssetStorage, AssetStoragePutInput } from './contract';
 
@@ -21,6 +21,19 @@ function storageTarget(root: string, key: string): string {
     throw new Error(`Asset storage key escapes configured root: "${key}"`);
   }
   return target;
+}
+
+/** Removes the folders a delete left empty, up to (never including) the root. */
+async function removeEmptyParents(root: string, directory: string): Promise<void> {
+  for (let current = directory; current.startsWith(`${root}${path.sep}`); current = path.dirname(current)) {
+    try {
+      await rmdir(current);
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code === 'ENOTEMPTY' || code === 'EEXIST' || code === 'ENOENT') return;
+      throw error;
+    }
+  }
 }
 
 export interface LocalAssetStorageOptions {
@@ -63,6 +76,7 @@ export function createLocalAssetStorage(options: LocalAssetStorageOptions): Asse
         const [resolvedRoot, resolvedTarget] = await Promise.all([realpath(root), realpath(target)]);
         if (!resolvedTarget.startsWith(`${resolvedRoot}${path.sep}`)) return false;
         await unlink(resolvedTarget);
+        await removeEmptyParents(resolvedRoot, path.dirname(resolvedTarget));
         return true;
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code === 'ENOENT') return true;
