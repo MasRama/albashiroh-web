@@ -1,6 +1,7 @@
 import { csrfHeaders, ensureCsrfToken } from '../features/auth/web';
 import { createContentClient } from '../features/content/web';
 import { createMediaClient } from '../features/media/web';
+import { createPpdbClient } from '../features/ppdb/web';
 
 /**
  * Clients for the content screens, built with the session's CSRF helpers.
@@ -11,3 +12,4 @@ const options = { ensureToken: ensureCsrfToken, headers: csrfHeaders };
 
 export const mediaClient = createMediaClient(options);
 export const contentClient = createContentClient(options);
+export const ppdbClient = createPpdbClient(options);
