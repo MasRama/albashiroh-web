@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { FileText, Upload } from 'lucide-vue-next';
+import { FileText, Upload } from '@lucide/vue';
 import { computed, onUnmounted, ref, watch } from 'vue';
 import { onServerEvent } from '../../../../shared/realtime/browser';
 import { AbButton, AbDialog, AbEmpty, AbNotice, AbSearch, AbSpinner, showToast } from '../../../../shared/ui';

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ChevronLeft, ChevronRight, X } from 'lucide-vue-next';
+import { ChevronLeft, ChevronRight, X } from '@lucide/vue';
 import { computed, nextTick, ref, watch } from 'vue';
 import type { PublicEntry } from '../../../features/content/web';
 import { longDate, youtubeId } from '../site';

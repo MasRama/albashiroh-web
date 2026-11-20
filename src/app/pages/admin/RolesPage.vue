@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { KeyRound, Plus } from 'lucide-vue-next';
+import { KeyRound, Plus } from '@lucide/vue';
 import { computed, onUnmounted, reactive, ref } from 'vue';
 import { ADMIN_ROLE_SLUG, AUTH_ROLES_CHANGED_EVENT, useAuthSession } from '../../../features/auth/web';
 import { onServerEvent } from '../../../shared/realtime/browser';

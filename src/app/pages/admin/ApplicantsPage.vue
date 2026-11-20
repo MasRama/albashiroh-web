@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Download, Settings, UsersRound } from 'lucide-vue-next';
+import { Download, Settings, UsersRound } from '@lucide/vue';
 import { computed, onUnmounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthSession } from '../../../features/auth/web';

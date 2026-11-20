@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowRight, FileText, MessageCircle } from 'lucide-vue-next';
+import { ArrowRight, FileText, MessageCircle } from '@lucide/vue';
 import { RouterLink } from 'vue-router';
 import { siteRouteName, type SitePortal } from '../../site-map';
 import { LOGO } from '../site';

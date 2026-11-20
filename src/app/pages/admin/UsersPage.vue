@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Plus, UsersRound } from 'lucide-vue-next';
+import { Plus, UsersRound } from '@lucide/vue';
 import { computed, onUnmounted, reactive, ref, watch } from 'vue';
 import { ADMIN_ROLE_SLUG, AUTH_ROLES_CHANGED_EVENT, useAuthSession } from '../../../features/auth/web';
 import { USERS_CHANGED_EVENT } from '../../../features/users/web';

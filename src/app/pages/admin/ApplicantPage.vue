@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { MessageCircle, Trash2 } from 'lucide-vue-next';
+import { MessageCircle, Trash2 } from '@lucide/vue';
 import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthSession } from '../../../features/auth/web';

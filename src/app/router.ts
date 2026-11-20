@@ -1,4 +1,4 @@
-import { ClipboardList, History, Images, KeyRound, LayoutDashboard, UsersRound } from 'lucide-vue-next';
+import { ClipboardList, History, Images, KeyRound, LayoutDashboard, UsersRound } from '@lucide/vue';
 import { createRouter, createWebHistory, type RouteLocationNormalized, type RouteRecordRaw, type RouterScrollBehavior } from 'vue-router';
 import { activityAccess } from '../features/activity/web';
 import { rolesAccess, useAuthSession } from '../features/auth/web';

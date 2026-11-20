@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowRight, ExternalLink, ImageOff, Settings2 } from 'lucide-vue-next';
+import { ArrowRight, ExternalLink, ImageOff, Settings2 } from '@lucide/vue';
 import { computed, ref, watch } from 'vue';
 import { CONTENT_TYPES, contentRefusalText, PORTAL_INFO, type Portal, type TypeSummary } from '../../../features/content/web';
 import { AbButton, AbNotice, AbPage, AbSpinner, count } from '../../../shared/ui';

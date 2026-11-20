@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ExternalLink, History, Trash2 } from 'lucide-vue-next';
+import { ExternalLink, History, Trash2 } from '@lucide/vue';
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { onBeforeRouteLeave, useRouter } from 'vue-router';
 import {

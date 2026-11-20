@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Search, X } from 'lucide-vue-next';
+import { Search, X } from '@lucide/vue';
 
 /** A search box for a list; the clear button empties it. */
 withDefaults(defineProps<{ modelValue: string; placeholder?: string; label?: string }>(), { placeholder: 'Cari', label: 'Cari' });
