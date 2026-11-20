@@ -208,6 +208,18 @@ describe('the public site', () => {
     expect(dialog?.open).toBe(false);
   });
 
+  it('shows a video with no photo by its YouTube thumbnail, on the home page as on the gallery', async () => {
+    await publish('smp', 'galeri', { title: 'Latihan pramuka', date: '2026-09-01', fields: { video: 'https://youtu.be/dQw4w9WgXcQ' } });
+    const thumbnail = 'https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg';
+
+    await visit('/');
+    expect(container.querySelector('.yh-gal-item img')?.getAttribute('src')).toBe(thumbnail);
+    expect(container.querySelector('.yh-gal-item .s-play')).not.toBeNull();
+
+    await visit('/galeri');
+    expect(container.querySelector('.lp-gal-item img')?.getAttribute('src')).toBe(thumbnail);
+  });
+
   it('switches PPDB between the schools, each with its own WhatsApp', async () => {
     await saveSettings('smp', (settings) => {
       settings.contact.whatsapp = '6281100000001';

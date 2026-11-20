@@ -112,6 +112,12 @@ export function youtubeId(url: string | undefined): string | null {
   return match ? match[1]! : null;
 }
 
+/** The YouTube thumbnail of a gallery video, for an item without a photo of its own. */
+export function videoThumb(entry: Pick<PublicEntry, 'image' | 'fields'>): string | null {
+  const id = entry.image ? null : youtubeId(entry.fields.video);
+  return id ? `https://i.ytimg.com/vi/${id}/hqdefault.jpg` : null;
+}
+
 /** A WhatsApp chat link from a number written with its country code. */
 export function whatsappLink(number: string, text?: string): string | null {
   const digits = number.replace(/\D/g, '');

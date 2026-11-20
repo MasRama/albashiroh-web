@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowRight, ArrowUpRight, BedDouble, FileDown, Trophy, UsersRound } from 'lucide-vue-next';
+import { ArrowRight, ArrowUpRight, BedDouble, FileDown, Play, Trophy, UsersRound } from 'lucide-vue-next';
 import { computed } from 'vue';
 import { RouterLink } from 'vue-router';
 import AgendaPanel from '../../site/components/AgendaPanel.vue';
@@ -7,7 +7,7 @@ import NewsCard from '../../site/components/NewsCard.vue';
 import PpdbBlock from '../../site/components/PpdbBlock.vue';
 import SiteHero from '../../site/components/SiteHero.vue';
 import SitePhoto from '../../site/components/SitePhoto.vue';
-import { LOGO, portalImage, textOf, useEntries, usePortal, useTitle, whatsappLink } from '../../site/site';
+import { LOGO, portalImage, textOf, useEntries, usePortal, useTitle, videoThumb, whatsappLink } from '../../site/site';
 import { siteRouteName } from '../../site-map';
 
 /**
@@ -214,7 +214,9 @@ const whatsapp = computed(() => (settings.value?.contact.whatsapp ? whatsappLink
         </div>
         <div class="yh-gal">
           <RouterLink v-for="(item, index) in gallery.page.value.items" :key="item.id" :to="route('galeri')" class="yh-gal-item" :aria-label="item.title">
-            <SitePhoto :image="item.image" :title="item.title" :tone="index % 2 ? 'sun' : 'forest'" scale="s" :sizes="index === 0 ? '(max-width: 640px) 100vw, 40vw' : '(max-width: 640px) 50vw, 20vw'" />
+            <img v-if="videoThumb(item)" :src="videoThumb(item)!" :alt="item.title" loading="lazy" />
+            <SitePhoto v-else :image="item.image" :title="item.title" :tone="index % 2 ? 'sun' : 'forest'" scale="s" :sizes="index === 0 ? '(max-width: 640px) 100vw, 40vw' : '(max-width: 640px) 50vw, 20vw'" />
+            <span v-if="item.fields.video" class="s-play" aria-hidden="true"><Play :size="22" fill="currentColor" /></span>
           </RouterLink>
         </div>
       </div>
@@ -272,7 +274,8 @@ const whatsapp = computed(() => (settings.value?.contact.whatsapp ? whatsappLink
 .yh-news-skeleton { min-height: 360px; }
 
 .yh-gal { display: grid; height: 300px; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 14px; }
-.yh-gal-item { overflow: hidden; border-radius: 20px; }
+.yh-gal-item { position: relative; overflow: hidden; border-radius: 20px; }
+.yh-gal-item img { width: 100%; height: 100%; object-fit: cover; }
 
 @media (max-width: 1100px) {
   .yh-news { grid-template-columns: 1fr 1fr; }

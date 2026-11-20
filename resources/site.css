@@ -48,6 +48,7 @@
 .s-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 36px; }
 .s-more { display: inline-flex; flex: none; align-items: center; gap: 8px; padding-bottom: 3px; border-bottom: 2px solid var(--ab-ink); font-size: 15px; font-weight: 700; }
 .s-more:hover { border-color: var(--acc); color: var(--acc-deep); }
+.s-play { position: absolute; top: 50%; left: 50%; display: grid; width: 56px; height: 56px; place-items: center; border-radius: 50%; background: #fff; color: var(--ab-ink); transform: translate(-50%, -50%); }
 
 /* Inner pages open with a solid block: kicker, headline, and a line about the page. */
 .s-pagehead { padding-top: 110px; }

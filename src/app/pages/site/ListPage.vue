@@ -8,7 +8,7 @@ import GalleryLightbox from '../../site/components/GalleryLightbox.vue';
 import NewsCard from '../../site/components/NewsCard.vue';
 import PageHead from '../../site/components/PageHead.vue';
 import SitePhoto from '../../site/components/SitePhoto.vue';
-import { agendaTile, levelLabel, longDate, pageTitle, useEntries, useTitle, youtubeId } from '../../site/site';
+import { agendaTile, levelLabel, longDate, pageTitle, useEntries, useTitle, videoThumb } from '../../site/site';
 import { entryPath, sitePage, siteRouteName, SITE_PORTAL_NAMES, type SitePortal } from '../../site-map';
 
 /**
@@ -49,10 +49,6 @@ watch(() => [props.portal, props.pageKey, current.value], () => (viewing.value =
 
 const tone = (entry: PublicEntry, index = 0) => (entry.portal === 'yayasan' ? (index % 2 ? 'ink' : 'forest') : entry.portal);
 const detail = (entry: PublicEntry) => entryPath(props.portal, entry.type, entry.slug) ?? '';
-const thumb = (entry: PublicEntry) => {
-  const id = youtubeId(entry.fields.video);
-  return id ? `https://i.ytimg.com/vi/${id}/hqdefault.jpg` : null;
-};
 const fileSize = (bytes: number) => (bytes >= 1_048_576 ? `${(bytes / 1_048_576).toFixed(1).replace('.', ',')} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`);
 const fileKind = (mime: string, name: string) => (mime === 'application/pdf' ? 'PDF' : (name.split('.').pop() ?? '').toUpperCase());
 
@@ -108,9 +104,9 @@ const EMPTY: Partial<Record<ContentType, string>> = {
         <template v-else-if="type === 'galeri'">
           <div class="lp-gal">
             <button v-for="(entry, index) in items" :key="entry.id" type="button" class="lp-gal-item" :aria-label="`Buka ${entry.title}`" @click="viewing = index">
-              <img v-if="!entry.image && thumb(entry)" :src="thumb(entry)!" :alt="entry.title" loading="lazy" />
+              <img v-if="videoThumb(entry)" :src="videoThumb(entry)!" :alt="entry.title" loading="lazy" />
               <SitePhoto v-else :image="entry.image" :title="entry.title" :tone="tone(entry, index)" scale="s" sizes="(max-width: 640px) 50vw, 25vw" />
-              <span v-if="entry.fields.video" class="lp-play" aria-hidden="true"><Play :size="22" fill="currentColor" /></span>
+              <span v-if="entry.fields.video" class="s-play" aria-hidden="true"><Play :size="22" fill="currentColor" /></span>
             </button>
           </div>
           <GalleryLightbox v-model="viewing" :items="items" />
@@ -252,7 +248,6 @@ const EMPTY: Partial<Record<ContentType, string>> = {
 .lp-gal-item { position: relative; overflow: hidden; padding: 0; border-radius: 20px; cursor: zoom-in; }
 .lp-gal-item:nth-child(6n + 1) { grid-row: span 2; grid-column: span 2; }
 .lp-gal-item img { width: 100%; height: 100%; object-fit: cover; }
-.lp-play { position: absolute; top: 50%; left: 50%; display: grid; width: 56px; height: 56px; place-items: center; border-radius: 50%; background: #fff; color: var(--ab-ink); transform: translate(-50%, -50%); }
 
 .lp-card { display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--ab-line); border-radius: 22px; background: #fff; }
 .lp-card--link { transition: border-color .15s; }
