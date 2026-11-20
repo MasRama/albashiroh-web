@@ -1,0 +1,4 @@
+#!/bin/sh
+# Runs the same gate as pull-request CI before anything leaves this machine.
+# Enable once per clone: git config core.hooksPath .githooks
+exec npm run verify

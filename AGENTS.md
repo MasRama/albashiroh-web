@@ -1,5 +1,16 @@
 # AGENTS.md
 
+This repository is the **Al Bashiroh website**: the Yayasan Bashiroh Robbaniyah site, the SMP IT and SMA IT Al Bashiroh portals, one PPDB form, and the admin panel that edits all of it. It is a Nara 3.5 application.
+
+Project rules on top of Nara's:
+
+- Public pages and the admin panel are written in Indonesian (the school's language). This overrides Nara's English interface-text default for this application; code, commits, API `code` values and docs stay English.
+- The repository is public. Never commit database files, uploads, `.env`, or real personal data (staff, students, PPDB applicants). Test fixtures are synthetic.
+- Follow the approved design language: paper `#F5F1E8`, forest `#0E3A27`, SMP green `#2F8A1F`, SMA orange `#F26300`, sun `#FFC83D`, ink `#13211A`; Bricolage Grotesque 800 headlines with Plus Jakarta Sans text; solid blocks and crisp white cards, no gradient washes, glows, or tinted chips above headlines.
+- Pull requests: one whole problem each, Conventional Commit titles, signed commits; see [`CONTRIBUTING.md`](./CONTRIBUTING.md).
+
+The rest of this file is Nara's own guidance, which still applies.
+
 Nara is an **architecture-aware TypeScript application kit**. Build by feature, not by layer.
 
 Stack: TypeScript, Node.js 22+, Hono + `@hono/node-server`, Vue 3 + Vite + `vue-router`, SQLite (`better-sqlite3`, raw SQL), Zod, Vitest. Session auth owned by the `auth` feature.

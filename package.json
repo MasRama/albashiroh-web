@@ -1,6 +1,6 @@
 {
   "name": "albashiroh-web",
-  "version": "3.5.0",
+  "version": "0.0.0",
   "private": true,
   "description": "Website and content management for Yayasan Bashiroh Robbaniyah and its SMP IT and SMA IT Al Bashiroh schools, built on Nara.",
   "license": "MIT",
@@ -34,7 +34,6 @@
     "perf:sanity": "node scripts/perf-sanity.mjs",
     "stage:package": "node scripts/stage-package.mjs",
     "validate:version": "node scripts/validate-version.mjs",
-    "validate:release": "npm run validate:version && npm run check && npm run build && npm run stage:package && npm run test:package-tarball && npm run test:packed-cli-boundary && npm run test:production-serving && npm run test:production-startup && npm run test:http-stack-compat && npm run test:official-feature && npm run test:packaged-lifecycle",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "lint": "tsc --noEmit",
@@ -43,7 +42,8 @@
     "architecture:doctor": "npx ts-node -r tsconfig-paths/register src/cli/index.ts doctor",
     "architecture:doctor:build": "node build/src/cli/index.js doctor",
     "check:fast": "npm run check:frontend && npm run test:fast && npm run build && npm run architecture:doctor:build",
-    "check": "npm run lint && npm run check:frontend && npm test && npm run architecture:doctor"
+    "check": "npm run lint && npm run check:frontend && npm test && npm run architecture:doctor",
+    "verify": "npm run check:fast"
   },
   "author": "MasRama",
   "dependencies": {
