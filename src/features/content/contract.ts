@@ -392,6 +392,8 @@ export interface PublicEntryPage {
 
 const text = (max: number) => z.string().trim().max(max, `Paling banyak ${max} huruf`).default('');
 const html = z.string().max(100_000, 'Isi terlalu panjang').default('');
+/** A link the public site puts in an href: http(s) only, so no javascript: or data: address reaches a page. */
+const webLink = text(300).refine((value) => value === '' || /^https?:\/\/[^\s/]+\.[^\s]+$/i.test(value), 'Tulis alamat lengkap, diawali https://');
 
 export const portalSettingsSchema = z.object({
   tagline: text(160),
@@ -420,10 +422,10 @@ export const portalSettingsSchema = z.object({
       whatsapp: z.string().trim().max(20).regex(/^(\+?\d{8,15})?$/, 'Tulis nomor saja, misalnya 6281234567890').default(''),
       email: z.union([z.literal(''), z.email('Alamat email tidak valid')]).default(''),
       mapQuery: text(300),
-      instagram: text(300),
-      facebook: text(300),
-      youtube: text(300),
-      tiktok: text(300),
+      instagram: webLink,
+      facebook: webLink,
+      youtube: webLink,
+      tiktok: webLink,
     })
     .default({ address: '', area: '', phone: '', whatsapp: '', email: '', mapQuery: '', instagram: '', facebook: '', youtube: '', tiktok: '' }),
   ppdb: z

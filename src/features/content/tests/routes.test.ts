@@ -244,12 +244,17 @@ describe('portal settings', () => {
     expect(saved.record.settings.takhosus).toBe('<p>Hanya untuk Yayasan</p>');
 
     const invalid = await send(YAYASAN_EDITOR, 'PUT', '/yayasan/settings', {
-      settings: { ...settings, heroImageId: GONE, contact: { email: 'bukan email', whatsapp: '0812-abc' } },
+      settings: {
+        ...settings,
+        heroImageId: GONE,
+        // A social link the public site would turn into a script, and one with no scheme at all.
+        contact: { email: 'bukan email', whatsapp: '0812-abc', instagram: 'javascript:alert(1)', tiktok: 'tiktok.com/@sekolah', youtube: 'https://youtube.com/@sekolah' },
+      },
       revision: 1,
     });
     expect(invalid.status).toBe(422);
     const body = (await invalid.json()) as { errors: Record<string, string[]> };
-    expect(Object.keys(body.errors).sort()).toEqual(['settings.contact.email', 'settings.contact.whatsapp']);
+    expect(Object.keys(body.errors).sort()).toEqual(['settings.contact.email', 'settings.contact.instagram', 'settings.contact.tiktok', 'settings.contact.whatsapp']);
 
     const gone = await send(YAYASAN_EDITOR, 'PUT', '/yayasan/settings', { settings: { ...settings, heroImageId: GONE }, revision: 1 });
     await expect(gone.json()).resolves.toMatchObject({ errors: { 'settings.heroImageId': [expect.any(String)] } });
