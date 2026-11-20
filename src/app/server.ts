@@ -49,6 +49,7 @@ import composeUsersServer from './bindings/users.server';
 import composeActivityServer, { createActivityRecorder } from './bindings/activity.server';
 import composeMediaServer from './bindings/media.server';
 import composeContentServer from './bindings/content.server';
+import composePpdbServer, { resetPpdbSubmitLimit } from './bindings/ppdb.server';
 import { healthRoutes } from '../features/health';
 import { describePage, renderRobots, renderShell, renderSitemap } from './site-meta';
 
@@ -143,6 +144,7 @@ const sensitiveRateLimiter = createRateLimiter({
 export function resetSecurityState(): void {
   globalRateLimiter.reset();
   sensitiveRateLimiter.reset();
+  resetPpdbSubmitLimit();
   resetLoginThrottle();
 }
 
@@ -253,6 +255,7 @@ composeUsersServer(app, { activity });
 composeActivityServer(app);
 composeMediaServer(app, { activity });
 const site = composeContentServer(app, { activity });
+composePpdbServer(app, { activity });
 // Live updates for signed-in browsers; Auth decides who is listening and
 // whether they meet a topic's rule, as it does for every guarded route.
 app.get(

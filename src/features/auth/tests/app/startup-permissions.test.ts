@@ -29,6 +29,8 @@ describe('application permissions', () => {
       'media.delete',
       'media.upload',
       'media.view',
+      'ppdb.manage',
+      'ppdb.view',
       'roles.create',
       'roles.delete',
       'roles.edit',
@@ -47,6 +49,6 @@ describe('application permissions', () => {
            WHERE r.slug = 'admin'`,
         )
         .get(),
-    ).toEqual({ count: 16 });
+    ).toEqual({ count: 18 });
   });
 });
