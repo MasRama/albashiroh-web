@@ -1,5 +1,6 @@
 import {
   CONTENT_TYPES,
+  LISTED_BODY_TYPES,
   portalTypes,
   type ContentEntry,
   type EntryFile,
@@ -67,6 +68,7 @@ export function presentPublic(rows: readonly EntryRow[], host: Refs): PublicEntr
     file: refs.file(row),
     date: row.date,
     fields: parseFields(row),
+    ...((LISTED_BODY_TYPES as readonly string[]).includes(row.type) ? { body: row.body } : {}),
   }));
 }
 

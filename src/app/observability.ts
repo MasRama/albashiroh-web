@@ -43,7 +43,7 @@ export function requestId() {
 }
 
 const QUIET_PATHS = new Set(['/health', '/ready']);
-const QUIET_PREFIXES = ['/assets/', '/landing/'];
+const QUIET_PREFIXES = ['/assets/', '/brand/'];
 
 function quietPath(pathname: string): boolean {
   return (

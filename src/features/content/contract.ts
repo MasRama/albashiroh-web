@@ -253,6 +253,9 @@ export function portalTypes(portal: Portal): ContentType[] {
  */
 export const AGGREGATED_TYPES = ['berita', 'agenda', 'galeri', 'prestasi', 'fasilitas', 'guru', 'dokumen'] as const satisfies readonly ContentType[];
 
+/** Types whose public list carries each entry's body: a FAQ answer is read in the list, never on a page of its own. */
+export const LISTED_BODY_TYPES = ['faq'] as const satisfies readonly ContentType[];
+
 export const ENTRY_STATUSES = ['draft', 'published'] as const;
 export type EntryStatus = (typeof ENTRY_STATUSES)[number];
 
@@ -374,6 +377,8 @@ export interface PublicEntry {
   file: EntryFile | null;
   date: string | null;
   fields: Record<string, string>;
+  /** Only for LISTED_BODY_TYPES in a list; always on a single entry. */
+  body?: string;
 }
 
 export interface PublicEntryDetail extends PublicEntry {

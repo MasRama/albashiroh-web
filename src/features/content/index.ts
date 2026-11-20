@@ -9,8 +9,9 @@ export {
   PORTALS,
   portalTypes,
 } from './contract';
-export type { ContentAccess, ContentEntry, ContentType, Portal, PortalSettings, PublicEntry } from './contract';
+export type { ContentAccess, ContentEntry, ContentType, EntryImage, Portal, PortalSettings, PublicEntry, PublicEntryDetail } from './contract';
 export type { ContentServerHost } from './server/host';
 export { createContentRoutes, createSiteRoutes } from './server/routes';
 export { publishedSlugs, readSettings } from './server/repository';
+export { createSiteReader, type SiteReader } from './server/site';
 export { plainText, sanitizeRichText, slugify } from './server/sanitize';

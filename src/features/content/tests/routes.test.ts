@@ -287,6 +287,12 @@ describe('public site reads', () => {
     expect((await app.request('/api/site/sd/berita')).status).toBe(404);
   });
 
+  it('carries each FAQ answer in its list, since a question has no page of its own', async () => {
+    await create(SMP_EDITOR, '/smp/faq', { title: 'Wajib asrama?', body: '<p>Ya, <strong>semua</strong> siswa.</p>', status: 'published' });
+    const faq = await data<{ items: PublicEntry[] }>(await app.request('/api/site/smp/faq'));
+    expect(faq.items[0]).toMatchObject({ title: 'Wajib asrama?', body: '<p>Ya, <strong>semua</strong> siswa.</p>' });
+  });
+
   it('lists upcoming agenda from today on, undated last', async () => {
     await create(SMP_EDITOR, '/smp/agenda', { title: 'Sudah lewat', date: '2020-01-01', status: 'published' });
     await create(SMP_EDITOR, '/smp/agenda', { title: 'Segera', status: 'published' });

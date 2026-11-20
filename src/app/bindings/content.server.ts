@@ -5,8 +5,10 @@ import {
   CONTENT_PERMISSIONS,
   contentAccess,
   createContentRoutes,
+  createSiteReader,
   createSiteRoutes,
   type ContentServerHost,
+  type SiteReader,
 } from '../../features/content';
 import { fileRefs, imageRefs } from '../../features/media';
 import type { ActivityReporter } from '../../shared/security';
@@ -40,8 +42,10 @@ export function createContentServerHost(activity: ActivityReporter): ContentServ
   };
 }
 
-export default function composeContentServer(app: Hono, options: { activity: ActivityReporter }): void {
+/** Mounts the admin and public content APIs, and hands back what the server reads to describe public pages. */
+export default function composeContentServer(app: Hono, options: { activity: ActivityReporter }): SiteReader {
   const host = createContentServerHost(options.activity);
   app.route('/api/content', createContentRoutes(host));
   app.route('/api/site', createSiteRoutes(host));
+  return createSiteReader(host);
 }

@@ -5,21 +5,22 @@ import { rolesAccess, useAuthSession } from '../features/auth/web';
 import { usersAccess } from '../features/users/web';
 import { mediaAccess } from '../features/media/web';
 import { contentAccess, PORTALS, type Portal } from '../features/content/web';
+import { loadAdminShell } from './admin-shell';
 import { PORTAL_ICON, PORTAL_LABEL, portalRoute } from './content-admin';
 import { canEnter } from './navigation';
-import ActivityPage from './pages/admin/ActivityPage.vue';
-import DashboardPage from './pages/admin/DashboardPage.vue';
-import MediaPage from './pages/admin/MediaPage.vue';
-import PasswordPage from './pages/admin/PasswordPage.vue';
-import ProfilePage from './pages/admin/ProfilePage.vue';
-import RolesPage from './pages/admin/RolesPage.vue';
-import SecurityPage from './pages/admin/SecurityPage.vue';
-import SignInPage from './pages/admin/SignInPage.vue';
-import UsersPage from './pages/admin/UsersPage.vue';
-import HomePage from './pages/HomePage.vue';
-import NotFoundPage from './pages/NotFoundPage.vue';
+import SiteNotFound from './pages/site/SiteNotFound.vue';
+import { siteRoutes } from './site-routes';
 
-// Portal content pages carry the article editor; they load on first visit so the public site never downloads it.
+// The admin loads on first visit, so a visitor to the public site never downloads it (nor the article editor).
+const ActivityPage = () => import('./pages/admin/ActivityPage.vue');
+const DashboardPage = () => import('./pages/admin/DashboardPage.vue');
+const MediaPage = () => import('./pages/admin/MediaPage.vue');
+const PasswordPage = () => import('./pages/admin/PasswordPage.vue');
+const ProfilePage = () => import('./pages/admin/ProfilePage.vue');
+const RolesPage = () => import('./pages/admin/RolesPage.vue');
+const SecurityPage = () => import('./pages/admin/SecurityPage.vue');
+const SignInPage = () => import('./pages/admin/SignInPage.vue');
+const UsersPage = () => import('./pages/admin/UsersPage.vue');
 const PortalPage = () => import('./pages/admin/PortalPage.vue');
 const PortalSettingsPage = () => import('./pages/admin/PortalSettingsPage.vue');
 const EntriesPage = () => import('./pages/admin/EntriesPage.vue');
@@ -47,11 +48,8 @@ function portalRoutes(portal: Portal): RouteRecordRaw[] {
 }
 
 export const appRoutes = [
-  {
-    path: '/',
-    name: 'home',
-    component: HomePage,
-  },
+  // The public site: the Yayasan at the root, each school under /smp and /sma.
+  ...siteRoutes(),
   {
     path: '/admin/masuk',
     alias: '/login',
@@ -114,7 +112,8 @@ export const appRoutes = [
   {
     path: '/:pathMatch(.*)*',
     name: 'not-found',
-    component: NotFoundPage,
+    component: SiteNotFound,
+    meta: { site: { portal: 'yayasan' } },
   },
 ] satisfies RouteRecordRaw[];
 
@@ -133,6 +132,8 @@ const router = createRouter({
 const authSession = useAuthSession();
 
 router.beforeEach(async (to) => {
+  // The public site needs no session: visitors never wait on the auth check.
+  if (to.meta.site) return true;
   try {
     // Protected and guest-only destinations need a fresh server decision so
     // revoked/expired sessions and permission changes take effect on the next
@@ -170,6 +171,11 @@ router.beforeEach(async (to) => {
   }
 
   return true;
+});
+
+// After every guard, so a visitor turned away from the admin never fetches its frame.
+router.beforeResolve(async (to) => {
+  if (to.meta.admin) await loadAdminShell();
 });
 
 export default router;

@@ -136,7 +136,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', beforeUnload));
       <AbCard title="Beranda" description="Bagian paling atas halaman depan.">
         <div class="ps-grid">
           <div class="ps-stack">
-            <AbField v-model="draft.heroTitle" label="Judul besar" :placeholder="school ? 'Wujudkan generasi bertaqwa dan berprestasi.' : 'Generasi Qur\'ani yang bertaqwa, berilmu, dan mandiri.'" :error="error('heroTitle')" :maxlength="140" />
+            <AbField v-model="draft.heroTitle" label="Judul besar" :placeholder="school ? 'Wujudkan generasi bertaqwa dan berprestasi.' : 'Generasi Qur\'ani yang bertaqwa, berilmu, dan mandiri.'" :error="error('heroTitle')" hint="Apit kata dengan bintang, misalnya *bertaqwa*, agar tampil berwarna." :maxlength="140" />
             <AbField v-model="draft.heroIntro" label="Paragraf pembuka" multiline :rows="4" :error="error('heroIntro')" :maxlength="400" />
             <AbField v-model="draft.tagline" label="Slogan singkat" hint="Tampil di kartu jenjang dan kaki halaman." :error="error('tagline')" :maxlength="160" />
             <AbField v-model="draft.accreditation" label="Akreditasi" placeholder="A" :error="error('accreditation')" :maxlength="10" />

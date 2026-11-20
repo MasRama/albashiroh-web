@@ -70,10 +70,11 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 .ab *, .ab *::before, .ab *::after { box-sizing: border-box; }
-.ab button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
-.ab button:disabled { cursor: default; }
-.ab input, .ab textarea, .ab select { font: inherit; color: inherit; }
-.ab a { color: inherit; text-decoration: none; }
+/* Resets carry no class weight, so a component class (.s-btn--wh) always beats them. */
+:where(.ab) button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+:where(.ab) button:disabled { cursor: default; }
+:where(.ab) :is(input, textarea, select) { font: inherit; color: inherit; }
+:where(.ab) a { color: inherit; text-decoration: none; }
 .ab :focus-visible { outline: 2px solid var(--ab-forest); outline-offset: 2px; }
 .ab .num { font-variant-numeric: tabular-nums; }
 
