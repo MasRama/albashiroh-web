@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Plus, X } from 'lucide-vue-next';
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref, toRaw, watch } from 'vue';
 import { onBeforeRouteLeave } from 'vue-router';
 import {
   contentRefusalText,
@@ -60,7 +60,10 @@ const error = (key: string) => fieldError(errors.value, `settings.${key}`);
 async function save(): Promise<void> {
   if (!record.value) return;
   saving.value = true;
-  const settings = structuredClone({ ...draft, misi: draft.misi.map((line) => line.trim()).filter(Boolean) }) as PortalSettings;
+  // The plain values under the form's proxy: the browser cannot clone a reactive object.
+  const settings = structuredClone(toRaw(draft)) as PortalSettings;
+  settings.misi = settings.misi.map((line) => line.trim()).filter(Boolean);
+  for (const key of SOCIAL) settings.contact[key] = withScheme(settings.contact[key]);
   const result = await contentClient.saveSettings(props.portal, settings, record.value.revision);
   saving.value = false;
   if (result.ok) {
@@ -86,6 +89,13 @@ async function save(): Promise<void> {
   }
   showToast(contentRefusalText(result), 'bad');
 }
+
+// Social links typed as a bare address ("instagram.com/…") get their https://; anything else is left for the server to check.
+const SOCIAL = ['instagram', 'facebook', 'youtube', 'tiktok'] as const;
+const withScheme = (value: string) => {
+  const link = value.trim();
+  return link === '' || /^[a-z][a-z0-9+.-]*:/i.test(link) ? link : `https://${link}`;
+};
 
 // Lists the school grows and trims.
 function addStat(): void {
@@ -203,10 +213,10 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', beforeUnload));
           <AbField v-model="draft.contact.whatsapp" label="WhatsApp" inputmode="tel" placeholder="6281234567890" hint="Diawali kode negara, tanpa spasi." :error="error('contact.whatsapp')" :maxlength="20" />
           <AbField v-model="draft.contact.email" label="Email" type="email" inputmode="email" :error="error('contact.email')" />
           <AbField v-model="draft.contact.mapQuery" label="Lokasi di peta" placeholder="SMP IT Al Bashiroh Turen" hint="Nama tempat atau alamat seperti dicari di Google Maps." :maxlength="300" />
-          <AbField v-model="draft.contact.instagram" label="Instagram" type="url" inputmode="url" placeholder="https://instagram.com/…" :maxlength="300" />
-          <AbField v-model="draft.contact.facebook" label="Facebook" type="url" inputmode="url" :maxlength="300" />
-          <AbField v-model="draft.contact.youtube" label="YouTube" type="url" inputmode="url" :maxlength="300" />
-          <AbField v-model="draft.contact.tiktok" label="TikTok" type="url" inputmode="url" :maxlength="300" />
+          <AbField v-model="draft.contact.instagram" label="Instagram" type="url" inputmode="url" :error="error('contact.instagram')" placeholder="https://instagram.com/…" :maxlength="300" />
+          <AbField v-model="draft.contact.facebook" label="Facebook" type="url" inputmode="url" :error="error('contact.facebook')" :maxlength="300" />
+          <AbField v-model="draft.contact.youtube" label="YouTube" type="url" inputmode="url" :error="error('contact.youtube')" :maxlength="300" />
+          <AbField v-model="draft.contact.tiktok" label="TikTok" type="url" inputmode="url" :error="error('contact.tiktok')" :maxlength="300" />
         </div>
       </AbCard>
 

@@ -146,6 +146,25 @@ describe('portal content in the admin', () => {
     expect(site.data.items.find((item) => item.title === 'Wisuda Tahfidz Angkatan Ketiga')?.image).toBeNull();
   });
 
+  it('saves the portal settings from the Simpan button and shows them on the site', async () => {
+    const editor = await smpEditor();
+    await openTab(editor.cookie, '/admin/smp/pengaturan');
+    expect(router.currentRoute.value.name).toBe('portal-smp-settings');
+
+    type(field('Judul besar'), 'Wujudkan generasi bertaqwa dan berprestasi.');
+    // A bare address gets its https:// as the editor saves.
+    type(field('Instagram'), 'instagram.com/smpitalbashiroh');
+    await settle();
+    container.querySelector<HTMLButtonElement>('form.ps button[type="submit"]')!.click();
+    await settle();
+
+    expect(container.textContent).toContain('Disimpan');
+    expect(container.textContent).not.toContain('Ada perubahan yang belum disimpan');
+    const site = (await (await serverApp.request('/api/site/smp')).json()) as { data: { settings: { heroTitle: string; contact: { instagram: string } } } };
+    expect(site.data.settings.heroTitle).toBe('Wujudkan generasi bertaqwa dan berprestasi.');
+    expect(site.data.settings.contact.instagram).toBe('https://instagram.com/smpitalbashiroh');
+  });
+
   it('keeps an SMP editor out of the SMA portal', async () => {
     const editor = await smpEditor();
     await openTab(editor.cookie, '/admin/sma');
