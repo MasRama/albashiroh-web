@@ -119,7 +119,8 @@ describe('portal content in the admin', () => {
 
     // Only the parts a news entry has, with the missing photo said plainly.
     expect(field('Judul')).toBeTruthy();
-    expect(container.querySelector('[role="toolbar"]')?.getAttribute('aria-label')).toBe('Format Isi berita');
+    // The editor is a lazy chunk, and a cold runner can take longer than settle() to load it.
+    await vi.waitFor(() => expect(container.querySelector('[role="toolbar"]')?.getAttribute('aria-label')).toBe('Format Isi berita'), { timeout: 5000 });
     expect(container.textContent).toContain('Belum ada gambar, unggah sekarang');
     expect(() => field('Pelatih')).toThrow();
 
