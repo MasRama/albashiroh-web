@@ -42,6 +42,16 @@ staff account under **Pengguna**, gives it a role, and sends the sign-in
 details the panel prepares. A new account, and one whose password an
 administrator reset, chooses its own password at first sign-in.
 
+<p>
+  <img src="docs/screenshots/admin-sign-in.webp" alt="Sign-in page of the admin panel" width="49%">
+  <img src="docs/screenshots/admin-dashboard.webp" alt="Admin panel home with the sidebar" width="49%">
+</p>
+<p>
+  <img src="docs/screenshots/admin-new-user.webp" alt="Creating a staff account with a temporary password and roles" width="64%">
+  <img src="docs/screenshots/admin-users-phone.webp" alt="The staff list on a phone" width="17%">
+  <img src="docs/screenshots/admin-menu-phone.webp" alt="The admin menu on a phone" width="17%">
+</p>
+
 ## Checks
 
 ```bash
