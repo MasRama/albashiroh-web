@@ -175,7 +175,8 @@ function insertImage(item: MediaItem): void {
           </button>
         </div>
       </div>
-      <form v-if="linking" class="rte-link" @submit.prevent="saveLink">
+      <!-- novalidate: a bare address ("albashiroh.sch.id") is fine here; saveLink adds its https://. -->
+      <form v-if="linking" class="rte-link" novalidate @submit.prevent="saveLink">
         <label class="ab-visually-hidden" :for="`${id}-link`">Alamat tautan</label>
         <input :id="`${id}-link`" ref="linkInput" v-model="linkHref" type="url" inputmode="url" placeholder="https://…" @keydown.esc.prevent="linking = false" />
         <button type="submit" class="rte-link-save">Pasang</button>

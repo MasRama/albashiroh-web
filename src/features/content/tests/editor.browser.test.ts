@@ -126,7 +126,8 @@ describe('RichTextEditor', () => {
     const input = container.querySelector<HTMLInputElement>('.rte-link input')!;
     input.value = 'kemdikbud.go.id';
     input.dispatchEvent(new Event('input'));
-    container.querySelector<HTMLFormElement>('.rte-link')!.dispatchEvent(new Event('submit', { cancelable: true }));
+    // The real button, so the browser's own address check runs as it would for an editor.
+    container.querySelector<HTMLButtonElement>('.rte-link-save')!.click();
     await settle();
     expect(value.value).toContain('href="https://kemdikbud.go.id"');
     expect(container.querySelector('.rte-link')).toBeNull();
