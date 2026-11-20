@@ -6,7 +6,7 @@ import App from '../../../../app/App.vue';
 import router from '../../../../app/router';
 import { app as serverApp } from '../../../../app/server';
 import { getDatabase } from '../../../../shared/database';
-import { csrfHeaders, issueCsrf, mergeResponseCookies } from '../../../../shared/security/tests/helpers';
+import { createTestAccount, signIn } from '../../../../app/tests/personas';
 import { createAuthClient, createAuthSession, useAuthSession, type AuthClient, type CurrentUser } from '../../web';
 import { createSecurityClient } from '../../web/security-client';
 import { totpCode, totpStep } from '../../server/totp';
@@ -20,7 +20,7 @@ let fetchPaths: string[];
 let pendingFetches: Set<Promise<Response>>;
 
 function syncDocumentCookies(): void {
-  for (const [name, value] of cookieJar) document.cookie = `${name}=${value}`;
+  for (const [name, value] of cookieJar) document.cookie = `${name}=${value}; path=/`;
 }
 
 function adoptCookieString(cookieString: string): void {
@@ -61,10 +61,10 @@ function cookieHeader(): string | undefined {
 function setSessionCookie(value: string | undefined): void {
   if (value === undefined) {
     cookieJar.delete('auth_id');
-    document.cookie = 'auth_id=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    document.cookie = 'auth_id=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
   } else {
     cookieJar.set('auth_id', value);
-    document.cookie = `auth_id=${value}`;
+    document.cookie = `auth_id=${value}; path=/`;
   }
 }
 function installApiFetch(): void {
@@ -105,16 +105,10 @@ function installApiFetch(): void {
   });
 }
 
+// Registration is closed: the account is made the way the owner makes one, then signs in.
 async function registerDirect(email: string): Promise<void> {
-  const state = await issueCsrf(serverApp);
-  adoptCookieString(state.cookie);
-  const response = await serverApp.request('/api/auth/register', {
-    method: 'POST',
-    headers: { ...csrfHeaders(state), 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name: 'Existing User', email, password: TEST_PASSWORD }),
-  });
-  expect(response.status).toBe(201);
-  adoptCookieString(mergeResponseCookies(state.cookie, response));
+  await createTestAccount('Existing User', email, TEST_PASSWORD);
+  adoptCookieString(await signIn(email, TEST_PASSWORD));
 }
 
 async function settle(): Promise<void> {
@@ -144,11 +138,23 @@ async function mountAt(path: string): Promise<void> {
   await nextTick();
 }
 
-function setInput(selector: string, value: string): void {
-  const input = container.querySelector(selector);
-  if (!(input instanceof HTMLInputElement)) throw new Error(`Missing input ${selector}`);
+// The admin's own screens: inputs found by their label; dialogs teleported to the body.
+function setField(label: string, value: string, scope: ParentNode = document): void {
+  const wrap = [...scope.querySelectorAll('.ab-field')].find((item) => item.querySelector('label')?.textContent?.replace('*', '').trim() === label);
+  const input = wrap?.querySelector('input');
+  if (!(input instanceof HTMLInputElement)) throw new Error(`Missing field ${label}`);
   input.value = value;
   input.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+function dialog(title: string): HTMLElement {
+  const found = [...document.querySelectorAll<HTMLElement>('.ab-dialog')].find((item) => item.querySelector('.ab-dialog-title')?.textContent?.trim() === title);
+  if (!found) throw new Error(`Missing dialog ${title}`);
+  return found;
+}
+
+function button(text: string, scope: ParentNode = document): HTMLButtonElement | undefined {
+  return [...scope.querySelectorAll<HTMLButtonElement>('button')].find((item) => item.textContent?.trim() === text);
 }
 
 function submitForm(): void {
@@ -162,8 +168,8 @@ beforeEach(async () => {
   document.body.append(container);
   application = undefined;
   cookieJar = new Map();
-  document.cookie = 'auth_id=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-  document.cookie = 'csrf_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+  document.cookie = 'auth_id=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+  document.cookie = 'csrf_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
   fetchPaths = [];
   pendingFetches = new Set();
   installApiFetch();
@@ -183,95 +189,24 @@ afterEach(async () => {
 });
 
 describe('browser authentication lifecycle', () => {
-  it('navigates from login to registration and registers without a document reload', async () => {
-    await mountAt('/login');
-    const documentElement = document.documentElement;
-    const registerLink = container.querySelector<HTMLAnchorElement>('a[href="/register"]');
-    expect(registerLink).not.toBeNull();
-    const registerNavigation = waitForNavigation();
-    registerLink?.click();
-    await registerNavigation;
-
-    expect(router.currentRoute.value.name).toBe('register');
-    expect(container.querySelector('h1')?.textContent).toContain('Create your account');
-
-    const email = `register-${Date.now()}@example.com`;
-    setInput('#name', 'Ada Lovelace');
-    setInput('#email', email);
-    setInput('#password', TEST_PASSWORD);
-    setInput('#password-confirmation', TEST_PASSWORD);
-    const dashboardNavigation = waitForNavigation();
-    submitForm();
-    await nextTick();
-    const registrationButton = container.querySelector<HTMLButtonElement>('button[type="submit"]');
-    expect(registrationButton?.disabled).toBe(true);
-    expect(registrationButton?.textContent).toContain('Creating account…');
-    await dashboardNavigation;
-
-    expect(router.currentRoute.value.name).toBe('dashboard');
-    expect(container.querySelector('h1')?.textContent).toContain('Hi, Ada.');
-    expect(document.documentElement).toBe(documentElement);
-    expect(useAuthSession().user.value?.email).toBe(email);
-    expect(fetchPaths).toContain('/api/auth/register');
-
-    const currentUserResponse = await serverApp.request('/api/auth/me', {
-      headers: { Cookie: cookieHeader()! },
-    });
-    expect(currentUserResponse.status).toBe(200);
-  });
-
-  it('renders registration validation errors without sending invalid input', async () => {
-    await mountAt('/register');
-
-    setInput('#name', 'A');
-    setInput('#email', 'invalid');
-    setInput('#password', 'short');
-    setInput('#password-confirmation', 'different');
-    submitForm();
-    await settle();
-
-    expect(router.currentRoute.value.name).toBe('register');
-    expect(container.querySelector('[role="alert"]')?.textContent).toContain('Please correct');
-    expect(container.textContent).toContain('Name must be at least 2 characters');
-    expect(container.textContent).toContain('Invalid email format');
-    expect(fetchPaths.filter((path) => path === '/api/auth/register')).toHaveLength(0);
-  });
-
-  it('renders a server registration failure', async () => {
-    const email = `duplicate-${Date.now()}@example.com`;
-    await registerDirect(email);
-    await useAuthSession().logout();
-    await mountAt('/register');
-
-    setInput('#name', 'Another User');
-    setInput('#email', email);
-    setInput('#password', TEST_PASSWORD);
-    setInput('#password-confirmation', TEST_PASSWORD);
-    submitForm();
-    await settle();
-
-    expect(router.currentRoute.value.name).toBe('register');
-    expect(container.querySelector('[role="alert"]')?.textContent).toContain('Email already in use');
-  });
-
   it('renders login errors and loading state', async () => {
     const email = `login-error-${Date.now()}@example.com`;
     await registerDirect(email);
     await useAuthSession().logout();
-    await mountAt('/login');
+    await mountAt('/admin/masuk');
 
-    setInput('#email', email);
-    setInput('#password', 'wrong password');
+    setField('Email', email);
+    setField('Kata sandi', 'wrong password');
     submitForm();
 
     await nextTick();
     const loginErrorButton = container.querySelector<HTMLButtonElement>('button[type="submit"]');
     expect(loginErrorButton?.disabled).toBe(true);
-    expect(loginErrorButton?.textContent).toContain('Signing in…');
+    expect(loginErrorButton?.getAttribute('aria-busy')).toBe('true');
     await settle();
 
     expect(router.currentRoute.value.name).toBe('login');
-    expect(container.querySelector('[role="alert"]')?.textContent).toContain('Invalid email or password');
+    expect(container.querySelector('[role="alert"]')?.textContent).toContain('Email atau kata sandi salah.');
     expect(useAuthSession().status.value).toBe('unauthenticated');
   });
 
@@ -335,16 +270,16 @@ describe('browser authentication lifecycle', () => {
     const email = `revoked-${Date.now()}@example.com`;
     await registerDirect(email);
     await useAuthSession().refresh();
-    await mountAt('/dashboard');
+    await mountAt('/admin');
     expect(useAuthSession().isAuthenticated.value).toBe(true);
 
     setSessionCookie(undefined);
-    await router.push('/profile');
+    await router.push('/admin/profil');
     await router.isReady();
 
     expect(useAuthSession().status.value).toBe('unauthenticated');
     expect(router.currentRoute.value.name).toBe('login');
-    expect(router.currentRoute.value.query.redirect).toBe('/profile');
+    expect(router.currentRoute.value.query.redirect).toBe('/admin/profil');
   });
 
   it('redirects guests to login and returns them to the protected destination after login', async () => {
@@ -352,23 +287,24 @@ describe('browser authentication lifecycle', () => {
     await registerDirect(email);
     await useAuthSession().logout();
 
-    await mountAt('/dashboard');
+    await mountAt('/admin');
     expect(router.currentRoute.value.name).toBe('login');
-    expect(router.currentRoute.value.query.redirect).toBe('/dashboard');
+    expect(router.currentRoute.value.query.redirect).toBe('/admin');
 
     const documentElement = document.documentElement;
-    setInput('#email', email);
-    setInput('#password', TEST_PASSWORD);
+    setField('Email', email);
+    setField('Kata sandi', TEST_PASSWORD);
     const navigation = waitForNavigation();
     submitForm();
     await nextTick();
     const loginButton = container.querySelector<HTMLButtonElement>('button[type="submit"]');
     expect(loginButton?.disabled).toBe(true);
-    expect(loginButton?.textContent).toContain('Signing in…');
+    expect(loginButton?.getAttribute('aria-busy')).toBe('true');
     await navigation;
+    await settle();
 
     expect(router.currentRoute.value.name).toBe('dashboard');
-    expect(container.querySelector('h1')?.textContent).toContain('Hi, Existing.');
+    expect(container.querySelector('[data-testid="dashboard-page"]')?.textContent).toContain("Assalamu'alaikum, Existing.");
     expect(useAuthSession().isAuthenticated.value).toBe(true);
     expect(document.documentElement).toBe(documentElement);
   });
@@ -382,21 +318,21 @@ describe('browser authentication lifecycle', () => {
     expect((await security.enableTwoFactor({ code: totpCode(secret, totpStep()) })).success).toBe(true);
     await useAuthSession().logout();
 
-    await mountAt('/login');
-    setInput('#email', email);
-    setInput('#password', TEST_PASSWORD);
+    await mountAt('/admin/masuk');
+    setField('Email', email);
+    setField('Kata sandi', TEST_PASSWORD);
     submitForm();
     await settle();
-    expect(container.querySelector('[data-testid="two-factor-form"]')).not.toBeNull();
+    expect(container.querySelector('h1')?.textContent).toContain('Verifikasi dua langkah');
     expect(useAuthSession().isAuthenticated.value).toBe(false);
 
-    setInput('#two-factor-code', '000000');
+    setField('Kode authenticator', '000000');
     submitForm();
     await settle();
-    expect(container.querySelector('[role="alert"]')?.textContent).toContain('Invalid authentication code');
+    expect(container.querySelector('[role="alert"]')?.textContent).toContain('Kodenya salah. Coba lagi.');
 
     const navigation = waitForNavigation();
-    setInput('#two-factor-code', totpCode(secret, totpStep() + 1));
+    setField('Kode authenticator', totpCode(secret, totpStep() + 1));
     submitForm();
     await navigation;
     expect(router.currentRoute.value.name).toBe('dashboard');
@@ -407,29 +343,31 @@ describe('browser authentication lifecycle', () => {
     const email = `security-page-${Date.now()}@example.com`;
     await registerDirect(email);
     await useAuthSession().refresh();
-    await mountAt('/security');
+    await mountAt('/admin/keamanan');
     await settle();
 
     const sessionRows = container.querySelectorAll('[data-testid="session-row"]');
     expect(sessionRows).toHaveLength(1);
-    expect(sessionRows[0]?.textContent).toContain('This device');
+    expect(sessionRows[0]?.textContent).toContain('Perangkat ini');
 
-    [...container.querySelectorAll<HTMLButtonElement>('button')].find((button) => button.textContent?.includes('Set up two-factor'))!.click();
+    button('Aktifkan', container)!.click();
     await nextTick();
-    setInput('#security-password', TEST_PASSWORD);
-    container.querySelector<HTMLFormElement>('[data-testid="confirm-password-form"]')!
-      .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    setField('Kata sandi', TEST_PASSWORD, dialog('Aktifkan verifikasi'));
+    button('Lanjut', dialog('Aktifkan verifikasi'))!.click();
     await settle();
 
-    expect(container.querySelector('[data-testid="two-factor-setup"] svg path')?.getAttribute('d')).toMatch(/^M\d/);
-    const secret = container.querySelector('[data-testid="two-factor-secret"]')!.textContent!.replace(/\s/g, '');
-    setInput('#two-factor-enable-code', totpCode(secret, totpStep()));
-    container.querySelector<HTMLFormElement>('[data-testid="two-factor-setup"]')!
-      .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    const scan = dialog('Hubungkan aplikasi');
+    expect(scan.querySelector('[data-testid="two-factor-qr"] path')?.getAttribute('d')).toMatch(/^M\d/);
+    expect(scan.querySelector('[data-testid="two-factor-link"]')?.getAttribute('href')).toMatch(/^otpauth:\/\/totp\//);
+    const secret = scan.querySelector('[data-testid="two-factor-secret"]')!.textContent!.replace(/\s/g, '');
+    setField('Kode 6 angka', totpCode(secret, totpStep()), scan);
+    button('Aktifkan', scan)!.click();
     await settle();
 
-    expect(container.querySelectorAll('[data-testid="recovery-codes"] li')).toHaveLength(10);
-    expect(container.querySelector('[data-testid="two-factor-panel"]')?.textContent).toContain('10 recovery codes left');
+    expect(dialog('Simpan kode pemulihan').querySelectorAll('[data-testid="recovery-codes"] code')).toHaveLength(10);
+    button('Selesai', dialog('Simpan kode pemulihan'))!.click();
+    await settle();
+    expect(container.querySelector('[data-testid="two-factor-left"]')?.textContent).toBe('10');
   });
 
   it('forces temporary-password users through password change before dashboard access', async () => {
@@ -439,24 +377,29 @@ describe('browser authentication lifecycle', () => {
     getDatabase().prepare('UPDATE users SET must_change_password = 1 WHERE email = ?').run(email);
     await useAuthSession().logout();
 
-    await mountAt('/login');
-    setInput('#email', email);
-    setInput('#password', TEST_PASSWORD);
+    await mountAt('/admin/masuk');
+    setField('Email', email);
+    setField('Kata sandi', TEST_PASSWORD);
     const forcedNavigation = waitForNavigation();
     submitForm();
     await forcedNavigation;
     await settle();
 
     expect(router.currentRoute.value.name).toBe('change-password');
-    expect(container.querySelector('h1')?.textContent).toContain('Change your password');
-    expect(container.querySelector('.nara-auth')).not.toBeNull();
-    expect(container.querySelector('[aria-label="Application navigation"]')).toBeNull();
-    expect(container.querySelector('a[href="/"]')).toBeNull();
+    expect(container.querySelector('h1')?.textContent).toContain('Buat kata sandi baru');
+    expect(container.querySelector('[data-testid="password-page"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="admin-shell"]')).toBeNull();
+    expect(container.querySelector('[aria-label="Navigasi admin"]')).toBeNull();
     expect(useAuthSession().user.value?.mustChangePassword).toBe(true);
 
-    setInput('#current-password', TEST_PASSWORD);
-    setInput('#new-password', replacement);
-    setInput('#confirm-password', replacement);
+    // Nothing else opens until the password is changed.
+    await router.push('/admin/pengguna');
+    await router.isReady();
+    expect(router.currentRoute.value.name).toBe('change-password');
+
+    setField('Kata sandi sekarang', TEST_PASSWORD);
+    setField('Kata sandi baru', replacement);
+    setField('Ulangi kata sandi baru', replacement);
     const dashboardNavigation = waitForNavigation();
     submitForm();
     await dashboardNavigation;
@@ -471,10 +414,10 @@ describe('browser authentication lifecycle', () => {
     const email = `logout-${Date.now()}@example.com`;
     await registerDirect(email);
     await useAuthSession().refresh();
-    await mountAt('/dashboard');
+    await mountAt('/admin');
 
-    const logoutButton = [...container.querySelectorAll<HTMLButtonElement>('button')].find((button) => button.textContent?.includes('Sign out'));
-    expect(logoutButton?.textContent).toContain('Sign out');
+    const logoutButton = button('Keluar', container);
+    expect(logoutButton).toBeDefined();
     const navigation = waitForNavigation();
     logoutButton?.click();
     await navigation;
@@ -486,7 +429,7 @@ describe('browser authentication lifecycle', () => {
     });
     expect(currentUserResponse.status).toBe(401);
 
-    await router.push('/dashboard');
+    await router.push('/admin');
     await router.isReady();
     expect(router.currentRoute.value.name).toBe('login');
   });
@@ -529,14 +472,10 @@ describe('application-owned auth pages', () => {
   });
 
   it('offers no registration link when the application routes no register page', async () => {
-    const register = router.getRoutes().find((route) => route.name === 'register')!;
-    router.removeRoute('register');
-    try {
-      await mountAt('/login');
-      expect(container.querySelector('a[href="/register"]')).toBeNull();
-      expect(container.querySelector('form')).not.toBeNull();
-    } finally {
-      router.addRoute(register);
-    }
+    expect(router.hasRoute('register')).toBe(false);
+    await mountAt('/admin/masuk');
+    expect(container.querySelector('a[href="/register"]')).toBeNull();
+    expect(container.textContent).toContain('Minta administrator sekolah membuatkannya.');
+    expect(container.querySelector('form')).not.toBeNull();
   });
 });

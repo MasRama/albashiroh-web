@@ -7,7 +7,7 @@ import router from '../../../../app/router';
 import { app as serverApp } from '../../../../app/server';
 import { getDatabase, seed } from '../../../../shared/database';
 import { syncDeclaredPermissions } from '../../server/permissions';
-import { csrfHeaders, issueCsrf, mergeResponseCookies } from '../../../../shared/security/tests/helpers';
+import { createTestAccount, signIn } from '../../../../app/tests/personas';
 import { createAccessClient, useAuthSession } from '../../web';
 
 const TEST_PASSWORD = 'correct horse battery staple';
@@ -18,7 +18,7 @@ let cookieJar: Map<string, string>;
 let pendingFetches: Set<Promise<Response>>;
 
 function syncDocumentCookies(): void {
-  for (const [name, value] of cookieJar) document.cookie = `${name}=${value}`;
+  for (const [name, value] of cookieJar) document.cookie = `${name}=${value}; path=/`;
 }
 
 function adoptCookieString(cookieString: string): void {
@@ -92,18 +92,12 @@ function installApiFetch(): void {
   });
 }
 
+// Registration is closed: the account is made the way the owner makes one, then signs in.
 async function registerDirect(email: string, name: string): Promise<string> {
-  const state = await issueCsrf(serverApp);
-  adoptCookieString(state.cookie);
-  const response = await serverApp.request('/api/auth/register', {
-    method: 'POST',
-    headers: { ...csrfHeaders(state), 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, email, password: TEST_PASSWORD }),
-  });
-  expect(response.status).toBe(201);
-  const cookie = mergeResponseCookies(state.cookie, response);
+  await createTestAccount(name, email, TEST_PASSWORD);
+  const cookie = await signIn(email, TEST_PASSWORD);
   adoptCookieString(cookie);
-  if (!cookie.includes('auth_id=')) throw new Error('Registration did not return a session cookie');
+  if (!cookie.includes('auth_id=')) throw new Error('Sign-in did not return a session cookie');
   return cookie;
 }
 
@@ -149,39 +143,43 @@ async function mountAt(path: string): Promise<void> {
   await nextTick();
 }
 
-function setInput(selector: string, value: string): void {
-  const input = container.querySelector(selector);
-  if (!(input instanceof HTMLInputElement)) throw new Error(`Missing input ${selector}`);
+function setField(label: string, value: string, scope: ParentNode = document): void {
+  const wrap = [...scope.querySelectorAll('.ab-field')].find((item) => item.querySelector('label')?.textContent?.replace('*', '').trim() === label);
+  const input = wrap?.querySelector('input');
+  if (!(input instanceof HTMLInputElement)) throw new Error(`Missing field ${label}`);
   input.value = value;
   input.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
-function submitForm(selector: string): void {
-  const form = container.querySelector(selector);
-  if (!(form instanceof HTMLFormElement)) throw new Error(`Missing form ${selector}`);
-  form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+function dialog(title: string): HTMLElement {
+  const found = [...document.querySelectorAll<HTMLElement>('.ab-dialog')].find((item) => item.querySelector('.ab-dialog-title')?.textContent?.trim() === title);
+  if (!found) throw new Error(`Missing dialog ${title}`);
+  return found;
 }
 
-async function click(selector: string): Promise<void> {
-  const element = container.querySelector<HTMLElement>(selector);
-  if (!element) throw new Error(`Missing element ${selector}`);
-  element.click();
+async function clickText(text: string, scope: ParentNode = document): Promise<void> {
+  const button = [...scope.querySelectorAll<HTMLButtonElement>('button')].find((item) => item.textContent?.trim() === text);
+  if (!button) throw new Error(`Missing button ${text}`);
+  button.click();
+  await settle();
+}
+
+async function togglePermission(title: string, slug: string): Promise<void> {
+  const target = dialog(title).querySelector<HTMLButtonElement>(`[data-permission-slug="${slug}"] [role="switch"]`);
+  if (!target) throw new Error(`Missing permission ${slug}`);
+  target.click();
   await nextTick();
 }
 
-function tableRowContaining(text: string): HTMLTableRowElement {
-  const row = [...container.querySelectorAll<HTMLTableRowElement>('tbody tr')].find((candidate) => candidate.textContent?.includes(text));
-  if (!row) throw new Error(`Missing table row containing ${text}`);
-  return row;
-}
+const roleRow = (slug: string) => container.querySelector<HTMLTableRowElement>(`tr[data-role-slug="${slug}"]`);
 
 beforeEach(async () => {
   container = document.createElement('div');
   document.body.append(container);
   application = undefined;
   cookieJar = new Map();
-  document.cookie = 'auth_id=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-  document.cookie = 'csrf_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+  document.cookie = 'auth_id=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+  document.cookie = 'csrf_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
   pendingFetches = new Set();
   seed();
   // Startup order: roles exist, then declared permissions are written and granted to admin.
@@ -204,69 +202,70 @@ afterEach(async () => {
 describe('roles and permissions browser surfaces', () => {
   it('shows the shipped permission catalog as stored, grouped by resource', async () => {
     await startAuthenticatedAdmin();
-    await mountAt('/roles');
+    await mountAt('/admin/peran');
     await settle();
-    await click('[data-testid="create-role"]');
+    await clickText('Peran baru', container);
 
-    const resetPermission = () =>
-      container.querySelector('[data-permission-slug="users.reset-password"]')?.closest('label')?.textContent ?? '';
-    const adminRow = () => container.querySelector(`tr[data-role-id="${roleIdForSlug('admin')}"]`)?.textContent ?? '';
-    expect(resetPermission()).toContain('Reset User Passwords');
-    expect(resetPermission()).toContain('Reset another account password and revoke its active sessions');
-    expect(adminRow()).toContain('Users');
+    const form = dialog('Peran baru');
+    const usersGroup = [...form.querySelectorAll('section')].find((section) => section.querySelector('h3')?.textContent === 'Pengguna');
+    expect(usersGroup?.querySelector('[data-permission-slug="users.reset-password"]')?.textContent).toContain('Atur ulang kata sandi pengguna');
+    expect(form.querySelector('[data-permission-slug="activity.view"]')?.textContent).toContain('Lihat riwayat aktivitas');
+    expect(roleRow('admin')?.textContent).toContain('Administrator');
+    expect(roleRow('admin')?.textContent).toContain('Semua izin');
   });
 
   it('lists roles with server user counts and persists role permission CRUD', async () => {
     await startAuthenticatedAdmin();
-    await mountAt('/roles');
+    await mountAt('/admin/peran');
     await settle();
 
     const adminRoleId = roleIdForSlug('admin');
-    const adminRow = container.querySelector<HTMLTableRowElement>(`tr[data-role-id="${adminRoleId}"]`);
-    expect(adminRow).not.toBeNull();
-    expect(adminRow?.querySelector('[data-testid="role-user-count"]')?.textContent).toMatch(/^\d+$/);
+    expect(roleRow('admin')?.textContent).toMatch(/\d+ pengguna/);
     const adminBefore = getDatabase().prepare('SELECT * FROM roles WHERE id = ?').get(adminRoleId);
 
-    const roleSlug = `browser-role-${randomUUID()}`;
-    await click('[data-testid="create-role"]');
-    setInput('#role-name', 'Browser Billing');
-    setInput('#role-slug', roleSlug);
-    await click('[data-permission-slug="users.view"]');
-    submitForm('[data-testid="role-form"]');
+    const suffix = randomUUID().slice(0, 8);
+    const name = `Operator TU ${suffix}`;
+    const roleSlug = `operator-tu-${suffix}`;
+    await clickText('Peran baru', container);
+    setField('Nama peran', name, dialog('Peran baru'));
+    await togglePermission('Peran baru', 'users.view');
+    await clickText('Simpan', dialog('Peran baru'));
+
+    const createdRow = roleRow(roleSlug);
+    expect(createdRow?.textContent).toContain(name);
+    expect(createdRow?.textContent).toContain('1 izin');
+    expect(container.textContent).toContain(`Peran ${name} disimpan`);
+
+    createdRow!.click();
     await settle();
+    setField('Nama peran', `${name} Baru`, dialog(name));
+    await togglePermission(name, 'users.edit');
+    await clickText('Simpan', dialog(name));
 
-    const createdRow = tableRowContaining(roleSlug);
-    const roleId = createdRow.dataset.roleId;
-    if (!roleId) throw new Error('Created role row did not expose its id');
-    expect(createdRow.textContent).toContain('UsersView');
-
-    await click(`[data-testid="edit-role-${roleId}"]`);
-    setInput('#role-name', 'Updated Browser Billing');
-    await click('[data-permission-slug="users.edit"]');
-    submitForm('[data-testid="role-form"]');
-    await settle();
-
-    const updatedRow = tableRowContaining(roleSlug);
-    expect(updatedRow.textContent).toContain('Updated Browser Billing');
-    expect(updatedRow.textContent).toContain('UsersEdit, View');
+    // The key stays what it was when the role was made; only the name changes.
+    expect(roleRow(roleSlug)?.textContent).toContain(`${name} Baru`);
+    expect(roleRow(roleSlug)?.textContent).toContain('2 izin');
 
     const rolesResponse = await serverApp.request('/api/roles', { headers: { Cookie: cookieHeader()! } });
     const rolesPayload = (await rolesResponse.json()) as {
       data: { roles: Array<{ slug: string; permissions: string[]; userCount: number }> };
     };
-    const persistedRole = rolesPayload.data.roles.find((role) => role.slug === roleSlug);
-    expect(persistedRole).toMatchObject({
+    expect(rolesPayload.data.roles.find((role) => role.slug === roleSlug)).toMatchObject({
       permissions: expect.arrayContaining(['users.view', 'users.edit']),
       userCount: 0,
     });
 
-    await click(`[data-testid="delete-role-${roleId}"]`);
-    await click('[data-testid="confirm-role-delete"]');
+    roleRow(roleSlug)!.click();
     await settle();
-    expect(container.querySelector(`tr[data-role-id="${roleId}"]`)).toBeNull();
+    await clickText('Hapus peran', dialog(`${name} Baru`));
+    await clickText('Hapus', dialog(`Hapus ${name} Baru?`));
+    expect(roleRow(roleSlug)).toBeNull();
 
-    expect(container.querySelector(`[data-testid="edit-role-${adminRoleId}"]`)).toBeNull();
-    expect(container.querySelector(`[data-testid="delete-role-${adminRoleId}"]`)).toBeNull();
+    // Administrator is not opened from here, and the server refuses changes to it anyway.
+    expect(roleRow('admin')?.querySelector('button')).toBeNull();
+    roleRow('admin')!.click();
+    await settle();
+    expect([...document.querySelectorAll('.ab-dialog-title')].map((title) => title.textContent)).not.toContain('Administrator');
 
     const updateResponse = await createAccessClient().updateRole(adminRoleId, { revision: 1, name: 'Renamed Administrator' });
     expect(updateResponse).toMatchObject({
@@ -282,6 +281,6 @@ describe('roles and permissions browser surfaces', () => {
       message: 'Cannot delete the admin role',
       code: 'PROTECTED_ROLE',
     });
-    expect(container.querySelector(`tr[data-role-id="${adminRoleId}"]`)).not.toBeNull();
+    expect(roleRow('admin')).not.toBeNull();
   });
 });

@@ -1,9 +1,6 @@
 /// <reference lib="dom" />
 /// <reference lib="dom.iterable" />
 import { randomUUID } from 'node:crypto';
-import { File as NodeFile } from 'node:buffer';
-import { rm } from 'node:fs/promises';
-import { resolve } from 'node:path';
 import { createApp, nextTick } from 'vue';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../../../../app/App.vue';
@@ -11,52 +8,14 @@ import router from '../../../../app/router';
 import { app as serverApp } from '../../../../app/server';
 import { getDatabase, seed } from '../../../../shared/database';
 import { syncDeclaredPermissions } from '../../../auth';
-import { csrfHeaders, issueCsrf, mergeResponseCookies } from '../../../../shared/security/tests/helpers';
-import { usersWebHost } from '../../../../app/bindings/users.web';
-import { grantAdmin, grantPermissions, revokeRoleFromEveryone, signUp } from '../../../../app/tests/personas';
+import { csrfHeaders, issueCsrf } from '../../../../shared/security/tests/helpers';
+import { csrfHeaders as browserCsrfHeaders, ensureCsrfToken, useAuthSession } from '../../../auth/web';
+import { createTestAccount, grantAdmin, grantPermissions, revokeRoleFromEveryone, signIn, signUp } from '../../../../app/tests/personas';
 import { createUsersClient } from '../../web';
 
 const TEST_PASSWORD = 'correct horse battery staple';
-const ONE_PIXEL_PNG = Buffer.from(
-  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
-  'base64',
-);
-interface TestFile {
-  readonly name: string;
-  readonly type: string;
-  readonly size: number;
-  arrayBuffer(): Promise<ArrayBuffer>;
-}
-
-class BrowserFormData {
-  private readonly values = new Map<string, string | TestFile>();
-
-  set(name: string, value: string | TestFile): void {
-    this.values.set(name, value);
-  }
-
-  append(name: string, value: string | TestFile): void {
-    this.values.set(name, value);
-  }
-
-  entries(): IterableIterator<[string, string | TestFile]> {
-    return this.values.entries();
-  }
-}
-
-async function encodeMultipart(file: TestFile): Promise<{ body: ArrayBuffer; contentType: string }> {
-  const boundary = `----nara-test-${randomUUID()}`;
-  const prefix = new TextEncoder().encode(
-    `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${file.name}"\r\nContent-Type: ${file.type}\r\n\r\n`,
-  );
-  const contents = new Uint8Array(await file.arrayBuffer());
-  const suffix = new TextEncoder().encode(`\r\n--${boundary}--\r\n`);
-  const body = new Uint8Array(prefix.length + contents.length + suffix.length);
-  body.set(prefix);
-  body.set(contents, prefix.length);
-  body.set(suffix, prefix.length + contents.length);
-  return { body: body.buffer as ArrayBuffer, contentType: `multipart/form-data; boundary=${boundary}` };
-}
+const session = useAuthSession();
+const browserCsrf = { headers: (extra?: HeadersInit) => browserCsrfHeaders(extra), ensureToken: () => ensureCsrfToken() };
 
 let container: HTMLDivElement;
 let application: { unmount(): void } | undefined;
@@ -66,7 +25,7 @@ let fetchUrls: string[];
 let pendingFetches: Set<Promise<Response>>;
 
 function syncDocumentCookies(): void {
-  for (const [name, value] of cookieJar) document.cookie = `${name}=${value}`;
+  for (const [name, value] of cookieJar) document.cookie = `${name}=${value}; path=/`;
 }
 
 function adoptCookieString(cookieString: string): void {
@@ -86,9 +45,9 @@ function setJar(cookieString: string): void {
 
 async function signOut(): Promise<void> {
   setJar('');
-  document.cookie = 'auth_id=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-  document.cookie = 'csrf_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-  await usersWebHost.refreshSession();
+  document.cookie = 'auth_id=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+  document.cookie = 'csrf_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+  await session.refresh();
 }
 
 function storeResponseCookies(response: Response): void {
@@ -130,18 +89,7 @@ function installApiFetch(): void {
     }
     const jar = cookieHeader();
     if (jar) headers.set('Cookie', jar);
-    let outgoingBody = init?.body;
-    if (outgoingBody instanceof BrowserFormData) {
-      const entries = [...outgoingBody.entries()];
-      const file = entries.find(([key]) => key === 'file')?.[1];
-      if (!file || typeof file === 'string' || typeof file.arrayBuffer !== 'function') {
-        throw new Error('Avatar file missing from test form');
-      }
-      const encoded = await encodeMultipart(file);
-      outgoingBody = encoded.body;
-      headers.set('Content-Type', encoded.contentType);
-    }
-    const outgoingRequest = new Request(url.href, { method, headers, body: outgoingBody });
+    const outgoingRequest = new Request(url.href, { method, headers, body: init?.body });
     const requestBody = ['GET', 'HEAD'].includes(method.toUpperCase()) ? undefined : await outgoingRequest.arrayBuffer();
     const response = await serverApp.request(url.pathname + url.search, {
       method: outgoingRequest.method,
@@ -160,7 +108,6 @@ function installApiFetch(): void {
     } as Response;
   };
 
-  vi.stubGlobal('FormData', BrowserFormData);
   vi.stubGlobal('fetch', (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     const response = request(input, init);
     pendingFetches.add(response);
@@ -179,16 +126,11 @@ function installApiFetch(): void {
   }));
 }
 
+// Registration is closed: the account is made the way the owner makes one, then signs in.
 async function registerDirect(email: string, name = 'Existing User'): Promise<string> {
-  const state = await issueCsrf(serverApp);
-  const response = await serverApp.request('/api/auth/register', {
-    method: 'POST',
-    headers: { ...csrfHeaders(state), 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, email, password: TEST_PASSWORD }),
-  });
-  expect(response.status).toBe(201);
-  const cookie = mergeResponseCookies(state.cookie, response);
-  if (!cookie.includes('auth_id=')) throw new Error('Registration did not return a session cookie');
+  await createTestAccount(name, email, TEST_PASSWORD);
+  const cookie = await signIn(email, TEST_PASSWORD);
+  if (!cookie.includes('auth_id=')) throw new Error('Sign-in did not return a session cookie');
   return cookie;
 }
 
@@ -201,18 +143,18 @@ function userIdForEmail(email: string): string {
 async function startAuthenticatedAdmin(email = `${randomUUID()}@example.com`): Promise<void> {
   adoptCookieString(await registerDirect(email, 'Browser Administrator'));
   grantAdmin(userIdForEmail(email));
-  await usersWebHost.refreshSession();
+  await session.refresh();
 }
 
 async function startAuthenticatedManager(email = `${randomUUID()}@example.com`): Promise<void> {
   adoptCookieString(await registerDirect(email, 'Browser Manager'));
   grantPermissions(userIdForEmail(email), ['users.view', 'users.edit']);
-  await usersWebHost.refreshSession();
+  await session.refresh();
 }
 
 async function startAuthenticatedUser(email = `${randomUUID()}@example.com`): Promise<void> {
   adoptCookieString(await registerDirect(email));
-  await usersWebHost.refreshSession();
+  await session.refresh();
 }
 
 async function settle(): Promise<void> {
@@ -243,55 +185,74 @@ async function mountAt(path: string): Promise<void> {
   await nextTick();
 }
 
-function setInput(selector: string, value: string): void {
-  const input = container.querySelector(selector);
-  if (!(input instanceof HTMLInputElement)) throw new Error(`Missing input ${selector}`);
+// The admin screens: labelled fields, dialogs teleported to the body, a row per account.
+function dialog(title: string): HTMLElement {
+  const found = [...document.querySelectorAll<HTMLElement>('.ab-dialog')].find(
+    (item) => item.querySelector('.ab-dialog-title')?.textContent?.trim() === title,
+  );
+  if (!found) throw new Error(`Missing dialog ${title}`);
+  return found;
+}
+
+function field(label: string, scope: ParentNode = document): HTMLInputElement {
+  const wrap = [...scope.querySelectorAll('.ab-field')].find(
+    (item) => item.querySelector('label')?.textContent?.replace('*', '').trim() === label,
+  );
+  const input = wrap?.querySelector('input');
+  if (!(input instanceof HTMLInputElement)) throw new Error(`Missing field ${label}`);
+  return input;
+}
+
+function setField(label: string, value: string, scope: ParentNode = document): void {
+  const input = field(label, scope);
   input.value = value;
   input.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
-function setSelect(selector: string, value: string): void {
-  const select = container.querySelector(selector);
-  if (!(select instanceof HTMLSelectElement)) throw new Error(`Missing select ${selector}`);
-  select.value = value;
-  select.dispatchEvent(new Event('change', { bubbles: true }));
+function buttonWithText(text: string, scope: ParentNode = document): HTMLButtonElement | undefined {
+  return [...scope.querySelectorAll<HTMLButtonElement>('button')].find((item) => item.textContent?.trim() === text);
 }
 
-async function click(selector: string): Promise<void> {
-  const element = container.querySelector<HTMLElement>(selector);
-  if (!element) throw new Error(`Missing element ${selector}`);
-  element.click();
+async function clickText(text: string, scope: ParentNode = document): Promise<void> {
+  const button = buttonWithText(text, scope);
+  if (!button) throw new Error(`Missing button ${text}`);
+  button.click();
+  await settle();
+}
+
+async function toggle(title: string, label: string): Promise<void> {
+  const target = dialog(title).querySelector<HTMLButtonElement>(`[role="switch"][aria-label="${label}"]`);
+  if (!target) throw new Error(`Missing switch ${label}`);
+  target.click();
   await nextTick();
 }
 
-function tableRowContaining(text: string): HTMLTableRowElement {
-  const row = [...container.querySelectorAll<HTMLTableRowElement>('tbody tr')].find((candidate) => candidate.textContent?.includes(text));
-  if (!row) throw new Error(`Missing table row containing ${text}`);
+function userRow(text: string): HTMLElement {
+  const row = [...container.querySelectorAll<HTMLElement>('[data-user-id]')].find((item) => item.textContent?.includes(text));
+  if (!row) throw new Error(`Missing user row containing ${text}`);
   return row;
 }
 
-function submitForm(selector: string): void {
-  const form = container.querySelector(selector);
-  if (!(form instanceof HTMLFormElement)) throw new Error(`Missing form ${selector}`);
-  form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+async function search(term: string): Promise<void> {
+  const input = container.querySelector<HTMLInputElement>('input[type="search"]');
+  if (!input) throw new Error('Missing search field');
+  input.value = term;
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+  // The list waits for typing to pause before it asks the server.
+  await new Promise((resolveWait) => setTimeout(resolveWait, 300));
+  await settle();
 }
 
-function chooseFile(file: TestFile): void {
-  const input = container.querySelector('#avatar-file');
-  if (!(input instanceof HTMLInputElement)) throw new Error('Missing avatar input');
-  Object.defineProperty(input, 'files', { configurable: true, value: [file] });
-  input.dispatchEvent(new Event('change', { bubbles: true }));
-}
+const requestsTo = (method: string, path: string) => fetchRequests.filter((item) => item.method === method && item.path === path).length;
+const password = (id: string) => (getDatabase().prepare('SELECT password FROM users WHERE id = ?').get(id) as { password: string }).password;
 
 beforeEach(async () => {
   container = document.createElement('div');
   document.body.append(container);
   application = undefined;
   cookieJar = new Map();
-  document.cookie = 'auth_id=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-  document.cookie = 'csrf_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-  window.localStorage.removeItem('nara-theme');
-  document.documentElement.classList.remove('dark');
+  document.cookie = 'auth_id=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+  document.cookie = 'csrf_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
   fetchRequests = [];
   fetchUrls = [];
   pendingFetches = new Set();
@@ -316,60 +277,49 @@ afterEach(async () => {
 
 describe('users browser surfaces', () => {
   it('redirects guests from protected account routes', async () => {
-    await mountAt('/profile');
+    await mountAt('/admin/profil');
 
     expect(router.currentRoute.value.name).toBe('login');
-    expect(router.currentRoute.value.query.redirect).toBe('/profile');
+    expect(router.currentRoute.value.query.redirect).toBe('/admin/profil');
   });
 
-  it('renders the authenticated shell and navigates to profile without a reload', async () => {
-    await startAuthenticatedUser(`${randomUUID()}@example.com`);
-    await mountAt('/dashboard');
+  it('renders the admin shell and opens Profil from it without a reload', async () => {
+    await startAuthenticatedUser();
+    await mountAt('/admin');
+    await settle();
     const documentElement = document.documentElement;
 
     expect(router.currentRoute.value.name).toBe('dashboard');
-    expect(container.querySelector('h1')?.textContent).toContain('Hi, Existing.');
-    const appNavigation = container.querySelector<HTMLElement>('nav[aria-label="Application navigation"]');
-    expect(appNavigation?.classList.contains('site-header-nav')).toBe(true);
-    expect(appNavigation?.closest('.site-header')?.classList.contains('site-header--app')).toBe(true);
-    expect(container.querySelector('a[href="/dashboard"]')?.textContent).toContain('Dashboard');
-    expect(container.querySelector('a[href="/profile"]')?.textContent).toContain('Profile');
+    expect(container.querySelector('[data-testid="admin-shell"]')).not.toBeNull();
+    expect(container.querySelector('[aria-label="Navigasi admin"]')).not.toBeNull();
 
     const navigation = waitForNavigation();
-    container.querySelector<HTMLAnchorElement>('a[href="/profile"]')?.click();
+    container.querySelector<HTMLAnchorElement>('a[href="/admin/profil"]')?.click();
     await navigation;
     await settle();
 
     expect(router.currentRoute.value.name).toBe('profile');
-    expect(container.querySelector('h1')?.textContent).toContain('Your profile');
+    expect(container.querySelector('h1')?.textContent).toContain('Profil');
     expect(document.documentElement).toBe(documentElement);
   });
 
-  it('applies a saved theme on direct authenticated entry without visiting home first', async () => {
-    window.localStorage.setItem('nara-theme', 'dark');
-    await startAuthenticatedUser();
-    await mountAt('/dashboard');
-
-    expect(document.documentElement.classList.contains('dark')).toBe(true);
-  });
-
-  it('loads and saves the current profile through the users Feature client', async () => {
+  it('loads and saves the current profile through the Users routes', async () => {
     const email = `${randomUUID()}@example.com`;
     await startAuthenticatedUser(email);
-    await mountAt('/profile');
+    await mountAt('/admin/profil');
     await settle();
 
-    expect(container.querySelector<HTMLInputElement>('#name')?.value).toBe('Existing User');
-    expect(container.querySelector<HTMLInputElement>('#email')?.value).toBe(email);
+    expect(field('Nama').value).toBe('Existing User');
+    expect(field('Email').value).toBe(email);
 
     const updatedEmail = `${randomUUID()}@example.com`;
-    setInput('#name', 'Updated User');
-    setInput('#email', updatedEmail);
-    submitForm('[data-testid="profile-form"]');
-    await settle();
+    setField('Nama', 'Updated User');
+    setField('Email', updatedEmail);
+    await nextTick();
+    await clickText('Simpan perubahan');
 
-    expect(container.textContent).toContain('Profile changes saved.');
-    expect(usersWebHost.currentSessionUser()).toMatchObject({ name: 'Updated User', email: updatedEmail });
+    expect(container.textContent).toContain('Profil disimpan');
+    expect(session.user.value).toMatchObject({ name: 'Updated User', email: updatedEmail });
     expect(fetchRequests).toContainEqual({ method: 'PATCH', path: '/api/users/me' });
 
     const response = await serverApp.request('/api/users/me', { headers: { Cookie: cookieHeader()! } });
@@ -381,100 +331,114 @@ describe('users browser surfaces', () => {
 
   it('shows profile validation errors without sending invalid input', async () => {
     await startAuthenticatedUser();
-    await mountAt('/profile');
+    await mountAt('/admin/profil');
     await settle();
-    const profileRequestsBeforeSubmit = fetchRequests.filter(({ path }) => path === '/api/users/me').length;
+    const before = requestsTo('PATCH', '/api/users/me');
 
-    setInput('#name', 'A');
-    setInput('#email', 'invalid');
-    submitForm('[data-testid="profile-form"]');
-    await settle();
+    setField('Nama', ' ');
+    setField('Email', 'invalid');
+    await nextTick();
+    await clickText('Simpan perubahan');
 
-    expect(container.querySelector('[role="alert"]')?.textContent).toContain('Please correct');
-    expect(container.textContent).toContain('Name must be at least 2 characters');
-    expect(container.textContent).toContain('Invalid email format');
-    expect(fetchRequests.filter(({ path }) => path === '/api/users/me')).toHaveLength(profileRequestsBeforeSubmit);
+    expect(container.textContent).toContain('Isi nama.');
+    expect(container.textContent).toContain('Isi email yang benar.');
+    expect(requestsTo('PATCH', '/api/users/me')).toBe(before);
   });
 
-  it('changes the password, preserves the session, and reports server failures', async () => {
+  it('merges a profile save made on another device instead of overwriting it', async () => {
+    const email = `${randomUUID()}@example.com`;
+    await startAuthenticatedUser(email);
+    await mountAt('/admin/profil');
+    await settle();
+
+    setField('Nama', 'Mine');
+    // The same account saves a new email from another device first.
+    const otherDevice = await signIn(email, TEST_PASSWORD);
+    const otherCsrf = await issueCsrf(serverApp, otherDevice);
+    const theirEmail = `${randomUUID()}@example.com`;
+    const theirSave = await serverApp.request('/api/users/me', {
+      method: 'PATCH',
+      headers: { ...csrfHeaders(otherCsrf), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ revision: 1, name: 'Existing User', email: theirEmail }),
+    });
+    expect(theirSave.status).toBe(200);
+
+    await nextTick();
+    await clickText('Simpan perubahan');
+
+    expect(field('Nama').value).toBe('Mine');
+    expect(field('Email').value).toBe(theirEmail);
+    const id = userIdForEmail(theirEmail);
+
+    await clickText('Simpan perubahan');
+    expect(getDatabase().prepare('SELECT name, email, revision FROM users WHERE id = ?').get(id)).toEqual({
+      name: 'Mine',
+      email: theirEmail,
+      revision: 3,
+    });
+  });
+
+  it('changes the password, keeps the session, and reports a wrong current password', async () => {
     await startAuthenticatedUser();
-    await mountAt('/profile');
+    await mountAt('/admin/kata-sandi');
     await settle();
 
-    setInput('#current_password', 'wrong password');
-    setInput('#new_password', 'new correct horse battery staple');
-    setInput('#confirm_password', 'new correct horse battery staple');
-    submitForm('[data-testid="password-form"]');
-    await settle();
+    setField('Kata sandi sekarang', 'wrong password');
+    setField('Kata sandi baru', 'new correct horse battery staple');
+    setField('Ulangi kata sandi baru', 'new correct horse battery staple');
+    await nextTick();
+    await clickText('Simpan kata sandi');
 
-    expect(container.querySelector('[role="alert"]')?.textContent).toContain('Current password is incorrect');
+    expect(container.querySelector('[role="alert"]')?.textContent).toContain('Kata sandi yang sekarang salah.');
+    expect(router.currentRoute.value.name).toBe('change-password');
+
+    setField('Kata sandi sekarang', TEST_PASSWORD);
+    await nextTick();
+    const navigation = waitForNavigation();
+    await clickText('Simpan kata sandi');
+    await navigation;
+
     expect(router.currentRoute.value.name).toBe('profile');
-
-    setInput('#current_password', TEST_PASSWORD);
-    submitForm('[data-testid="password-form"]');
-    await settle();
-
-    expect(container.querySelector('[role="status"]')?.textContent).toContain('Password updated');
-    expect(usersWebHost.currentSessionUser()).not.toBeNull();
+    expect(session.user.value).not.toBeNull();
     expect(fetchRequests).toContainEqual({ method: 'POST', path: '/api/auth/change-password' });
-  });
-
-  it('validates and displays uploaded avatars through the users Feature', async () => {
-    await startAuthenticatedUser();
-    await mountAt('/profile');
-    await settle();
-
-    chooseFile(new NodeFile(['not an image'], 'avatar.txt', { type: 'text/plain' }));
-    await settle();
-    expect(container.querySelector('[role="alert"]')?.textContent).toContain('Choose a JPEG, PNG, GIF, or WebP image');
-    expect(fetchRequests.filter(({ path }) => path === '/api/assets/avatar')).toHaveLength(0);
-
-    chooseFile(new NodeFile([ONE_PIXEL_PNG], 'avatar.png', { type: 'image/png' }));
-    await settle();
-    const avatar = container.querySelector<HTMLImageElement>('[data-testid="profile-avatar"]');
-    expect(avatar?.getAttribute('src')).toMatch(/^\/api\/assets\/avatar\/[a-f0-9-]+\.webp$/i);
-    expect(container.textContent).toContain('Profile photo updated.');
-    expect(fetchRequests).toContainEqual({ method: 'POST', path: '/api/assets/avatar' });
-
-    const filename = avatar?.getAttribute('src')?.split('/').pop();
-    if (filename) await rm(resolve(process.cwd(), 'storage', 'avatars', filename), { force: true });
   });
 
   it('changes landing calls to match the current session', async () => {
     await mountAt('/');
-    expect(container.querySelector('a[href="/login"]')?.textContent).toContain('Sign in');
-    expect(container.querySelector('a[href="/dashboard"]')).toBeNull();
+    expect(container.querySelector('a[href="/admin/masuk"]')).not.toBeNull();
+    expect(container.querySelector('a[href="/admin"]')).toBeNull();
 
     await startAuthenticatedUser();
     await router.push('/');
     await router.isReady();
     await nextTick();
 
-    expect(container.querySelector('a[href="/dashboard"]')?.textContent).toContain('Dashboard');
-    expect(container.querySelector('a[href="/login"]')).toBeNull();
+    expect(container.querySelector('a[href="/admin"]')).not.toBeNull();
+    expect(container.querySelector('a[href="/admin/masuk"]')).toBeNull();
   });
 
-  it('logs out from the shell and protects account routes again', async () => {
+  it('signs out from the shell and protects account routes again', async () => {
     await startAuthenticatedUser();
-    await mountAt('/dashboard');
+    await mountAt('/admin');
+    await settle();
 
     const navigation = waitForNavigation();
-    [...container.querySelectorAll<HTMLButtonElement>('button')].find((button) => button.textContent?.includes('Sign out'))?.click();
+    buttonWithText('Keluar', container)?.click();
     await navigation;
 
     expect(router.currentRoute.value.name).toBe('login');
-    expect(usersWebHost.currentSessionUser()).toBeNull();
-    await router.push('/profile');
+    expect(session.user.value).toBeNull();
+    await router.push('/admin/profil');
     await router.isReady();
     expect(router.currentRoute.value.name).toBe('login');
-    expect(router.currentRoute.value.query.redirect).toBe('/profile');
+    expect(router.currentRoute.value.query.redirect).toBe('/admin/profil');
   });
 });
 
 describe('users administration browser surfaces', () => {
-  it('shows administration navigation only for users with view permissions', async () => {
+  it('lists the account screens in the sidebar for an administrator', async () => {
     await startAuthenticatedAdmin();
-    await mountAt('/dashboard');
+    await mountAt('/admin');
     await settle();
     const sessionResponse = await serverApp.request('/api/auth/me', { headers: { Cookie: cookieHeader()! } });
     await expect(sessionResponse.json()).resolves.toMatchObject({
@@ -487,33 +451,33 @@ describe('users administration browser surfaces', () => {
       },
     });
 
-    expect(container.querySelector('a[href="/users"]')?.textContent).toContain('Users');
-    expect(container.querySelector('a[href="/roles"]')?.textContent).toContain('Roles');
-    // The shell lists routes that declare meta.nav, in route order.
-    const links = [...container.querySelectorAll('nav[aria-label="Application navigation"] a')].map((link) => link.textContent?.trim());
-    expect(links).toEqual(['Dashboard', 'Profile', 'Users', 'Roles', 'Activity', 'Security']);
+    const sidebar = container.querySelector('[aria-label="Navigasi admin"]')!;
+    expect(sidebar.querySelector('a[href="/admin/pengguna"]')?.textContent).toContain('Pengguna');
+    expect(sidebar.querySelector('a[href="/admin/peran"]')?.textContent).toContain('Peran & izin');
+    expect(sidebar.querySelector('a[href="/admin/aktivitas"]')?.textContent).toContain('Aktivitas');
   });
 
   it('redirects restricted users away from administration routes', async () => {
     await startAuthenticatedUser();
-    await mountAt('/dashboard');
+    await mountAt('/admin');
     await settle();
 
-    expect(container.querySelector('a[href="/users"]')).toBeNull();
-    expect(container.querySelector('a[href="/roles"]')).toBeNull();
+    expect(container.querySelector('a[href="/admin/pengguna"]')).toBeNull();
+    expect(container.querySelector('a[href="/admin/peran"]')).toBeNull();
+    expect(container.querySelector('a[href="/admin/profil"]')).not.toBeNull();
 
-    await router.push('/users');
+    await router.push('/admin/pengguna');
     await router.isReady();
     expect(router.currentRoute.value.name).toBe('dashboard');
-    expect(container.querySelector('[data-testid="user-list"]')).toBeNull();
+    expect(container.querySelector('[data-testid="users-page"]')).toBeNull();
 
-    await router.push('/roles');
+    await router.push('/admin/peran');
     await router.isReady();
     expect(router.currentRoute.value.name).toBe('dashboard');
-    expect(container.querySelector('[data-testid="role-list"]')).toBeNull();
+    expect(container.querySelector('[data-testid="roles-page"]')).toBeNull();
   });
 
-  it('surfaces role-directory failures instead of silently rendering an empty assignment list', async () => {
+  it('says so when the roles cannot load instead of creating an account without one', async () => {
     await startAuthenticatedAdmin();
     const delegatedFetch = globalThis.fetch;
     vi.stubGlobal('fetch', (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
@@ -531,44 +495,37 @@ describe('users administration browser surfaces', () => {
       return delegatedFetch(input, init);
     });
 
-    const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    await mountAt('/users');
+    await mountAt('/admin/pengguna');
     await settle();
+    await clickText('Pengguna baru', container);
 
-    // The page shows its own failure message; the host's reason goes to the console.
-    expect(container.querySelector('[role="alert"]')?.textContent).toContain('Unable to load roles');
-    expect(logged).toHaveBeenCalledWith(expect.objectContaining({ message: 'Role directory unavailable' }));
-    await click('[data-testid="create-user"]');
-    expect(container.textContent).toContain('Unable to load roles');
-    expect(container.querySelector('[data-role-slug]')).toBeNull();
-    logged.mockRestore();
+    expect(dialog('Pengguna baru').textContent).toContain('Daftar peran belum bisa dimuat');
+    expect(dialog('Pengguna baru').querySelector('[role="switch"]')).toBeNull();
+    const before = requestsTo('POST', '/api/users');
+    setField('Nama', 'No Role Yet', dialog('Pengguna baru'));
+    setField('Email', `${randomUUID()}@example.com`, dialog('Pengguna baru'));
+    await nextTick();
+    await clickText('Buat akun', dialog('Pengguna baru'));
+    expect(requestsTo('POST', '/api/users')).toBe(before);
   });
 
-  it('uses server search and pagination responses for the users list', async () => {
+  it('searches the users list on the server', async () => {
     const searchTerm = `Searchable-${randomUUID()}`;
     await startAuthenticatedAdmin();
     await registerDirect(`${randomUUID()}@example.com`, `${searchTerm} One`);
     await registerDirect(`${randomUUID()}@example.com`, `${searchTerm} Two`);
     await registerDirect(`${randomUUID()}@example.com`, `${searchTerm} Three`);
 
-    await mountAt('/users');
+    await mountAt('/admin/pengguna');
     await settle();
-    setInput('#user-search', searchTerm);
-    submitForm('[data-testid="user-search-form"]');
-    await settle();
+    await search(searchTerm);
 
-    expect(fetchUrls.some((url) => url.includes(`/api/users?page=1&limit=10&search=${encodeURIComponent(searchTerm)}`))).toBe(true);
-    expect(container.querySelector('[data-testid="user-list"]')?.textContent).toContain(`${searchTerm} One`);
-    expect(container.querySelector('[data-testid="user-list"]')?.textContent).toContain(`${searchTerm} Three`);
-
-    setSelect('#user-page-size', '1');
-    await settle();
-    expect(container.textContent).toContain('Page 1 of 3');
-    await click('[data-testid="user-next"]');
-    await settle();
-
-    expect(fetchUrls.some((url) => url.includes(`/api/users?page=2&limit=1&search=${encodeURIComponent(searchTerm)}`))).toBe(true);
-    expect(container.textContent).toContain('Page 2 of 3');
+    expect(fetchUrls.some((url) => url.startsWith('/api/users?') && url.includes(`search=${encodeURIComponent(searchTerm)}`))).toBe(true);
+    const page = container.querySelector('[data-testid="users-page"]')?.textContent;
+    expect(page).toContain(`${searchTerm} One`);
+    expect(page).toContain(`${searchTerm} Two`);
+    expect(page).toContain(`${searchTerm} Three`);
+    expect(page).not.toContain('Browser Administrator');
   });
 
   it('keeps the newest users-list response when overlapping searches resolve out of order', async () => {
@@ -577,173 +534,153 @@ describe('users administration browser surfaces', () => {
     await startAuthenticatedAdmin();
     await registerDirect(`${randomUUID()}@example.com`, `${slowTerm} Result`);
     await registerDirect(`${randomUUID()}@example.com`, `${fastTerm} Result`);
-    await mountAt('/users');
+    await mountAt('/admin/pengguna');
     await settle();
 
     const delegatedFetch = globalThis.fetch;
     let releaseSlow: (() => void) | undefined;
-    let markSlowStarted: (() => void) | undefined;
-    const slowStarted = new Promise<void>((resolve) => {
-      markSlowStarted = resolve;
-    });
-    const slowGate = new Promise<void>((resolve) => {
-      releaseSlow = resolve;
+    const slowGate = new Promise<void>((resolveGate) => {
+      releaseSlow = resolveGate;
     });
     vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
       const inputUrl = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
       const url = new URL(inputUrl, 'http://nara.test');
       const method = init?.method ?? (input instanceof Request ? input.method : 'GET');
-      if (
-        method.toUpperCase() === 'GET' &&
-        url.pathname === '/api/users' &&
-        url.searchParams.get('search') === slowTerm
-      ) {
-        markSlowStarted?.();
+      if (method.toUpperCase() === 'GET' && url.pathname === '/api/users' && url.searchParams.get('search') === slowTerm) {
         await slowGate;
       }
       return delegatedFetch(input, init);
     });
 
-    setInput('#user-search', slowTerm);
-    submitForm('[data-testid="user-search-form"]');
-    await slowStarted;
-
-    setInput('#user-search', fastTerm);
-    submitForm('[data-testid="user-search-form"]');
-    await settle();
-    expect(container.querySelector('[data-testid="user-list"]')?.textContent).toContain(`${fastTerm} Result`);
-    expect(container.querySelector('[data-testid="user-list"]')?.textContent).not.toContain(`${slowTerm} Result`);
+    const page = () => container.querySelector('[data-testid="users-page"]')?.textContent;
+    void search(slowTerm);
+    await new Promise((resolveWait) => setTimeout(resolveWait, 300));
+    await search(fastTerm);
+    expect(page()).toContain(`${fastTerm} Result`);
+    expect(page()).not.toContain(`${slowTerm} Result`);
 
     releaseSlow?.();
     await settle();
-    expect(container.querySelector('[data-testid="user-list"]')?.textContent).toContain(`${fastTerm} Result`);
-    expect(container.querySelector('[data-testid="user-list"]')?.textContent).not.toContain(`${slowTerm} Result`);
+    expect(page()).toContain(`${fastTerm} Result`);
+    expect(page()).not.toContain(`${slowTerm} Result`);
   });
 
   it('requires a password before creating a managed user', async () => {
     const email = `${randomUUID()}@example.com`;
     await startAuthenticatedAdmin();
-    await mountAt('/users');
+    await mountAt('/admin/pengguna');
     await settle();
 
-    await click('[data-testid="create-user"]');
-    setInput('#user-name', 'Missing Browser Password');
-    setInput('#user-email', email);
-    const postCountBeforeSubmit = fetchRequests.filter(({ method, path }) => method === 'POST' && path === '/api/users').length;
-    submitForm('[data-testid="user-form"]');
-    await settle();
+    await clickText('Pengguna baru', container);
+    const form = dialog('Pengguna baru');
+    setField('Nama', 'Missing Browser Password', form);
+    setField('Email', email, form);
+    setField('Kata sandi sementara', '', form);
+    await nextTick();
+    const before = requestsTo('POST', '/api/users');
+    await clickText('Buat akun', form);
 
-    expect(container.textContent).toContain('Password must be at least 8 characters');
-    expect(container.textContent).toContain('Required; use at least 8 characters.');
-    expect(container.textContent).not.toContain('server fallback');
-    expect(fetchRequests.filter(({ method, path }) => method === 'POST' && path === '/api/users')).toHaveLength(postCountBeforeSubmit);
+    expect(form.textContent).toContain('Minimal 8 karakter.');
+    expect(requestsTo('POST', '/api/users')).toBe(before);
     expect(getDatabase().prepare('SELECT id FROM users WHERE email = ?').get(email)).toBeUndefined();
   });
 
-  it('creates users, validates input, and assigns a role while editing', async () => {
+  it('creates users, validates input, assigns a role, resets a password, and refuses self-demotion', async () => {
     const email = `${randomUUID()}@example.com`;
-    const adminEmail = `${randomUUID()}@example.com`;
-    await startAuthenticatedAdmin(adminEmail);
-    await mountAt('/users');
+    await startAuthenticatedAdmin();
+    await mountAt('/admin/pengguna');
     await settle();
 
-    await click('[data-testid="create-user"]');
-    setInput('#user-name', 'A');
-    setInput('#user-email', 'invalid');
-    const postCountBeforeInvalidSubmit = fetchRequests.filter(({ method, path }) => method === 'POST' && path === '/api/users').length;
-    submitForm('[data-testid="user-form"]');
-    await settle();
-    expect(container.querySelector('[role="alert"]')?.textContent).toContain('Please correct');
-    expect(fetchRequests.filter(({ method, path }) => method === 'POST' && path === '/api/users')).toHaveLength(postCountBeforeInvalidSubmit);
+    await clickText('Pengguna baru', container);
+    const form = dialog('Pengguna baru');
+    setField('Nama', ' ', form);
+    setField('Email', 'invalid', form);
+    await nextTick();
+    const before = requestsTo('POST', '/api/users');
+    await clickText('Buat akun', form);
+    expect(form.textContent).toContain('Isi nama.');
+    expect(form.textContent).toContain('Isi email yang benar.');
+    expect(requestsTo('POST', '/api/users')).toBe(before);
 
-    setInput('#user-name', 'Created Browser User');
-    setInput('#user-email', email);
-    setInput('#user-password', 'managed-password');
-    submitForm('[data-testid="user-form"]');
-    await settle();
+    setField('Nama', 'Created Browser User', form);
+    setField('Email', email, form);
+    setField('Kata sandi sementara', 'managed-password', form);
+    await nextTick();
+    await clickText('Buat akun', form);
 
     expect(fetchRequests).toContainEqual({ method: 'POST', path: '/api/users' });
-    const createdRow = tableRowContaining(email);
-    const userId = createdRow.dataset.userId;
-    if (!userId) throw new Error('Created user row did not expose its id');
-    expect(createdRow.textContent).toContain('No roles');
+    expect(dialog('Akun dibuat').textContent).toContain('managed-password');
+    expect(dialog('Akun dibuat').textContent).toContain(email);
+    await clickText('Selesai', dialog('Akun dibuat'));
+    const userId = userRow(email).dataset.userId!;
+    // An account an administrator made changes its password at first sign-in.
+    expect(getDatabase().prepare('SELECT must_change_password FROM users WHERE id = ?').get(userId)).toEqual({ must_change_password: 1 });
 
-    const passwordBeforeEdit = getDatabase().prepare('SELECT password FROM users WHERE id = ?').get(userId) as { password: string };
-    await click(`[data-testid="edit-user-${userId}"]`);
-    setInput('#user-name', 'Updated Browser User');
-    await click('[data-role-slug="user"]');
-    submitForm('[data-testid="user-form"]');
+    const passwordBeforeEdit = password(userId);
+    userRow(email).click();
     await settle();
+    const edit = dialog('Created Browser User');
+    setField('Nama', 'Updated Browser User', edit);
+    await toggle('Created Browser User', 'Staf');
+    await clickText('Simpan', edit);
 
-    const updatedRow = tableRowContaining(email);
-    expect(updatedRow.textContent).toContain('Updated Browser User');
-    expect(updatedRow.textContent).toContain('User');
+    expect(userRow(email).textContent).toContain('Updated Browser User');
+    expect(userRow(email).textContent).toContain('Staf');
+    expect(container.textContent).toContain('Pengguna disimpan');
     expect(fetchRequests).toContainEqual({ method: 'PUT', path: `/api/users/${userId}` });
-    const passwordAfterEdit = getDatabase().prepare('SELECT password FROM users WHERE id = ?').get(userId) as { password: string };
-    expect(passwordAfterEdit.password).toBe(passwordBeforeEdit.password);
+    expect(password(userId)).toBe(passwordBeforeEdit);
 
-    await click(`[data-testid="edit-user-${userId}"]`);
-    expect(container.querySelector('[data-testid="reset-user-password"]')).not.toBeNull();
-    setInput('#user-password', 'reset-managed-password');
-    await nextTick();
-    await click('[data-testid="reset-user-password"]');
+    userRow(email).click();
     await settle();
+    await clickText('Atur ulang kata sandi', dialog('Updated Browser User'));
+    setField('Kata sandi sementara', 'reset-managed-password', dialog('Atur ulang kata sandi'));
+    await nextTick();
+    await clickText('Atur ulang', dialog('Atur ulang kata sandi'));
     expect(fetchRequests).toContainEqual({ method: 'POST', path: `/api/users/${userId}/reset-password` });
-    const passwordAfterReset = getDatabase().prepare('SELECT password FROM users WHERE id = ?').get(userId) as { password: string };
-    expect(passwordAfterReset.password).not.toBe(passwordBeforeEdit.password);
-    expect(container.textContent).toContain('Password reset');
+    expect(password(userId)).not.toBe(passwordBeforeEdit);
+    expect(dialog('Kata sandi diatur ulang').textContent).toContain('reset-managed-password');
+    await clickText('Selesai', dialog('Kata sandi diatur ulang'));
 
     const response = await serverApp.request(`/api/users?search=${encodeURIComponent(email)}`, { headers: { Cookie: cookieHeader()! } });
     await expect(response.json()).resolves.toMatchObject({
       success: true,
-      data: { users: [{ email, roles: ['user'] }] },
+      data: { users: [{ email, roles: expect.arrayContaining(['user']) }] },
     });
 
-    const selfRow = tableRowContaining('Browser Administrator');
-    const selfId = selfRow.dataset.userId;
-    if (!selfId) throw new Error('Administrator row did not expose its id');
-    const selfBefore = getDatabase()
-      .prepare('SELECT id, name, email, password FROM users WHERE id = ?')
-      .get(selfId) as { id: string; name: string; email: string; password: string };
-    const selfRolesBefore = getDatabase()
-      .prepare('SELECT role_id FROM user_roles WHERE user_id = ? ORDER BY role_id')
-      .all(selfId);
-    await click(`[data-testid="edit-user-${selfId}"]`);
-    setInput('#user-name', 'Rejected Browser Administrator');
-    setInput('#user-email', `${randomUUID()}@example.com`);
-    expect(container.querySelector('#user-password')).toBeNull();
-    expect(container.textContent).toContain('Change your own password from Profile');
-    await click('[data-role-slug="admin"]');
-    submitForm('[data-testid="user-form"]');
+    const selfId = userRow('Browser Administrator').dataset.userId!;
+    const selfBefore = getDatabase().prepare('SELECT id, name, email, password FROM users WHERE id = ?').get(selfId);
+    const selfRolesBefore = getDatabase().prepare('SELECT role_id FROM user_roles WHERE user_id = ? ORDER BY role_id').all(selfId);
+    userRow('Browser Administrator').click();
     await settle();
-    expect(container.querySelector('[role="alert"]')?.textContent).toContain('Cannot remove admin role from yourself');
-    expect(usersWebHost.currentSessionUser()).not.toBeNull();
+    const self = dialog('Browser Administrator');
+    // Nobody resets or removes their own account from here.
+    expect(buttonWithText('Atur ulang kata sandi', self)).toBeUndefined();
+    expect(buttonWithText('Hapus pengguna', self)).toBeUndefined();
+    setField('Nama', 'Rejected Browser Administrator', self);
+    await toggle('Browser Administrator', 'Administrator');
+    await clickText('Simpan', self);
 
-    const selfAfter = getDatabase()
-      .prepare('SELECT id, name, email, password FROM users WHERE id = ?')
-      .get(selfId);
-    const selfRolesAfter = getDatabase()
-      .prepare('SELECT role_id FROM user_roles WHERE user_id = ? ORDER BY role_id')
-      .all(selfId);
-    expect(selfAfter).toEqual(selfBefore);
-    expect(selfRolesAfter).toEqual(selfRolesBefore);
+    expect(container.textContent).toContain('Anda tidak bisa mencabut peran administrator dari akun Anda sendiri.');
+    expect(session.user.value).not.toBeNull();
+    expect(getDatabase().prepare('SELECT id, name, email, password FROM users WHERE id = ?').get(selfId)).toEqual(selfBefore);
+    expect(getDatabase().prepare('SELECT role_id FROM user_roles WHERE user_id = ? ORDER BY role_id').all(selfId)).toEqual(selfRolesBefore);
   });
 
   it('hides role controls for a manager and reports forbidden role assignment', async () => {
     await startAuthenticatedManager();
     const targetEmail = `${randomUUID()}@example.com`;
     await registerDirect(targetEmail, 'Manager Target');
-    await mountAt('/users');
+    await mountAt('/admin/pengguna');
     await settle();
 
-    expect(container.querySelector('[data-testid="create-user"]')).toBeNull();
-    const row = tableRowContaining(targetEmail);
-    const targetId = row.dataset.userId;
-    if (!targetId) throw new Error('Manager target row did not expose its id');
-    await click(`[data-testid="edit-user-${targetId}"]`);
-    expect(container.querySelector('[data-role-slug]')).toBeNull();
+    expect(buttonWithText('Pengguna baru', container)).toBeUndefined();
+    const targetId = userRow(targetEmail).dataset.userId!;
+    userRow(targetEmail).click();
+    await settle();
+    expect(dialog('Manager Target').querySelector('[role="switch"]')).toBeNull();
+    expect(dialog('Manager Target').textContent).toContain('Hanya administrator yang bisa mengubah peran.');
 
-    const response = await createUsersClient({ csrf: usersWebHost.csrf }).updateUser(targetId, { revision: 1, roles: ['user'] });
+    const response = await createUsersClient({ csrf: browserCsrf }).updateUser(targetId, { revision: 1, roles: ['user'] });
     expect(response).toMatchObject({
       success: false,
       code: 'FORBIDDEN',
@@ -755,51 +692,22 @@ describe('users administration browser surfaces', () => {
     await startAuthenticatedAdmin();
     const targetEmail = `${randomUUID()}@example.com`;
     await registerDirect(targetEmail, 'Delete Me');
-    await mountAt('/users');
+    await mountAt('/admin/pengguna');
     await settle();
 
-    const targetRow = tableRowContaining(targetEmail);
-    const targetId = targetRow.dataset.userId;
-    if (!targetId) throw new Error('Delete target row did not expose its id');
-    await click(`[data-testid="delete-user-${targetId}"]`);
-    await click('[data-testid="confirm-delete"]');
+    const targetId = userRow(targetEmail).dataset.userId!;
+    userRow(targetEmail).click();
     await settle();
-    expect(container.querySelector(`tr[data-user-id="${targetId}"]`)).toBeNull();
+    await clickText('Hapus pengguna', dialog('Delete Me'));
+    await clickText('Hapus', dialog('Hapus Delete Me?'));
+    expect(container.querySelector(`[data-user-id="${targetId}"]`)).toBeNull();
     expect(fetchRequests).toContainEqual({ method: 'DELETE', path: '/api/users' });
+    expect(container.textContent).toContain('Delete Me dihapus');
 
-    const selfRow = tableRowContaining('Browser Administrator');
-    const selfId = selfRow.dataset.userId;
-    if (!selfId) throw new Error('Administrator row did not expose its id');
-    expect(container.querySelector(`[data-testid="delete-user-${selfId}"]`)).toBeNull();
-    expect(usersWebHost.currentSessionUser()).not.toBeNull();
-  });
-
-  it('clamps pagination after deleting the only user on the last page', async () => {
-    const marker = `Clamp-${randomUUID()}`;
-    await startAuthenticatedAdmin();
-    await registerDirect(`${randomUUID()}@example.com`, `${marker} One`);
-    await registerDirect(`${randomUUID()}@example.com`, `${marker} Two`);
-    await mountAt('/users');
+    userRow('Browser Administrator').click();
     await settle();
-
-    setInput('#user-search', marker);
-    submitForm('[data-testid="user-search-form"]');
-    await settle();
-    setSelect('#user-page-size', '1');
-    await settle();
-    await click('[data-testid="user-next"]');
-    await settle();
-    expect(container.textContent).toContain('Page 2 of 2');
-
-    const row = container.querySelector<HTMLTableRowElement>('[data-testid="user-list"] tbody tr[data-user-id]');
-    const userId = row?.dataset.userId;
-    if (!userId) throw new Error('Last-page user row did not expose its id');
-    await click(`[data-testid="delete-user-${userId}"]`);
-    await click('[data-testid="confirm-delete"]');
-    await settle();
-
-    expect(container.textContent).toContain('Page 1 of 1');
-    expect(fetchUrls.some((url) => url.includes(`/api/users?page=1&limit=1&search=${encodeURIComponent(marker)}`))).toBe(true);
+    expect(buttonWithText('Hapus pengguna', dialog('Browser Administrator'))).toBeUndefined();
+    expect(session.user.value).not.toBeNull();
   });
 
   it('merges a save made elsewhere when the server refuses an edit based on an older revision', async () => {
@@ -807,11 +715,12 @@ describe('users administration browser surfaces', () => {
     await registerDirect(targetEmail, 'Shared Account');
     const targetId = userIdForEmail(targetEmail);
     await startAuthenticatedAdmin();
-    await mountAt('/users');
+    await mountAt('/admin/pengguna');
     await settle();
 
-    await click(`[data-testid="edit-user-${targetId}"]`);
-    setInput('#user-name', 'Mine');
+    userRow(targetEmail).click();
+    await settle();
+    setField('Nama', 'Mine', dialog('Shared Account'));
     // Another administrator saves first, changing the name and the email.
     const theirEmail = `${randomUUID()}@example.com`;
     const colleague = await signUp('Other Administrator');
@@ -824,27 +733,23 @@ describe('users administration browser surfaces', () => {
     });
     expect(theirSave.status).toBe(200);
 
-    submitForm('[data-testid="user-form"]');
-    await settle();
+    await nextTick();
+    await clickText('Simpan', dialog('Shared Account'));
 
-    expect(container.querySelector('[role="alert"]')?.textContent).toContain('Choose which version to keep below');
-    expect((container.querySelector('#user-email') as HTMLInputElement).value).toBe(theirEmail);
-    expect((container.querySelector('#user-name') as HTMLInputElement).value).toBe('Mine');
-    expect(
-      [...container.querySelectorAll('[data-testid="user-conflicts"] [data-conflict-field]')].map((row) => row.getAttribute('data-conflict-field')),
-    ).toEqual(['name']);
+    // What this administrator changed stays; what they left alone takes the other save.
+    const merged = dialog('Theirs');
+    expect(field('Nama', merged).value).toBe('Mine');
+    expect(field('Email', merged).value).toBe(theirEmail);
     expect(getDatabase().prepare('SELECT name FROM users WHERE id = ?').get(targetId)).toEqual({ name: 'Theirs' });
 
-    await click('[data-testid="keep-mine-name"]');
-    submitForm('[data-testid="user-form"]');
-    await settle();
+    await clickText('Simpan', merged);
 
     expect(getDatabase().prepare('SELECT name, email, revision FROM users WHERE id = ?').get(targetId)).toEqual({
       name: 'Mine',
       email: theirEmail,
       revision: 3,
     });
-    expect(tableRowContaining(theirEmail).textContent).toContain('Mine');
+    expect(userRow(theirEmail).textContent).toContain('Mine');
   });
 
   it('surfaces last-admin protection through the users browser client', async () => {
@@ -860,8 +765,8 @@ describe('users administration browser surfaces', () => {
     grantAdmin(adminId);
 
     setJar(managerCookie);
-    await usersWebHost.refreshSession();
-    const response = await createUsersClient({ csrf: usersWebHost.csrf }).deleteUsers({ ids: [adminId] });
+    await session.refresh();
+    const response = await createUsersClient({ csrf: browserCsrf }).deleteUsers({ ids: [adminId] });
 
     expect(response).toMatchObject({
       success: false,

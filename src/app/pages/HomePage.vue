@@ -49,8 +49,8 @@ const reviewTimers: ReturnType<typeof setTimeout>[] = [];
 const authSession = useAuthSession();
 const authLink = computed(() =>
   authSession.isAuthenticated.value
-    ? { label: 'Dashboard', to: '/dashboard' }
-    : { label: 'Sign in', to: '/login' },
+    ? { label: 'Dashboard', to: '/admin' }
+    : { label: 'Sign in', to: '/admin/masuk' },
 );
 
 const tokenPattern = /(\/\/.*)|('[^']*')|\b(import|from|export|default|const|function|return|type|new|async|await|if|void|undefined)\b|\b([A-Z]\w*)\b|\b(\d+)\b|([a-z_$][\w$]*)(?=\()/g;

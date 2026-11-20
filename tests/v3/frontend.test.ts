@@ -40,74 +40,54 @@ describe('Vue frontend shell', () => {
     await nextTick();
   }
 
-  it('renders home and navigates to LoginPage without a document reload', async () => {
+  it('renders home and navigates to the admin sign-in page without a document reload', async () => {
     await mountAt('/');
 
     const documentElement = document.documentElement;
     const homeElement = container.firstElementChild;
     expect(container.querySelector('h1')?.textContent).toContain('Build by feature.');
 
-    const loginLink = container.querySelector('a[href="/login"]');
+    const loginLink = container.querySelector('a[href="/admin/masuk"]');
     expect(loginLink).not.toBeNull();
     loginLink?.click();
     await new Promise<void>((resolve) => setTimeout(resolve, 0));
     await nextTick();
 
-    expect(router.currentRoute.value.path).toBe('/login');
-    expect(container.querySelector('h1')?.textContent).toContain('Welcome back');
+    expect(router.currentRoute.value.path).toBe('/admin/masuk');
+    expect(container.querySelector('h1')?.textContent).toContain('Masuk ke panel admin');
     expect(container.firstElementChild).not.toBe(homeElement);
     expect(document.documentElement).toBe(documentElement);
   });
 
-  it('resolves the direct login route to the auth Feature page', async () => {
+  it('keeps /login as a way to the admin sign-in page', async () => {
     await mountAt('/login');
 
-    expect(container.querySelector('h1')?.textContent).toContain('Welcome back');
+    expect(router.currentRoute.value.name).toBe('login');
+    expect(container.querySelector('h1')?.textContent).toContain('Masuk ke panel admin');
     expect(container.querySelector('form')).not.toBeNull();
   });
 
-  it('keeps login and registration in one landing-aligned design with the same theme preference', async () => {
-    await mountAt('/login');
-    expect(container.querySelector('.nara-auth-story-title')?.textContent).toContain('Build by feature.');
-    expect(container.querySelector('.nara-auth-brand img')?.getAttribute('src')).toBe('/nara.png');
-    expect(container.querySelectorAll('.nara-auth-form .nara-auth-input')).toHaveLength(2);
-    expect(container.querySelector('.nara-auth-form-kicker')).toBeNull();
-    expect(container.querySelector('.nara-auth-principles')).toBeNull();
-    expect(container.querySelector('.nara-auth-grid')).toBeNull();
-    expect(container.querySelector('.nara-auth-form-description')).toBeNull();
+  it('signs in on the Al Bashiroh frame with a password the visitor can reveal, and no registration', async () => {
+    await mountAt('/admin/masuk');
 
-    const loginTheme = container.querySelector<HTMLButtonElement>('.nara-auth-theme');
-    expect(loginTheme?.getAttribute('aria-label')).toBe('Use dark mode');
-    loginTheme?.click();
-    await nextTick();
-    expect(document.documentElement.classList.contains('dark')).toBe(true);
-    expect(window.localStorage.getItem('nara-theme')).toBe('dark');
+    expect(container.querySelector('[data-testid="sign-in-page"]')).not.toBeNull();
+    expect(container.textContent).toContain('Al Bashiroh');
+    expect(container.querySelectorAll('form .ab-field input')).toHaveLength(2);
+    expect(container.querySelector('a[href="/register"]')).toBeNull();
 
-    container.querySelector<HTMLAnchorElement>('a[href="/register"]')?.click();
-    await new Promise<void>((resolve) => setTimeout(resolve, 0));
-    await nextTick();
-    expect(router.currentRoute.value.name).toBe('register');
-    expect(container.querySelector('h1')?.textContent).toContain('Create your account.');
-    expect(container.querySelector('.nara-auth-theme')?.getAttribute('aria-label')).toBe('Use light mode');
-    expect(container.querySelectorAll('.nara-auth-form .nara-auth-input')).toHaveLength(4);
-    expect(container.querySelector('.nara-auth-form-kicker')).toBeNull();
-    expect(container.querySelector('.nara-auth-form-description')).toBeNull();
-
-    const password = container.querySelector<HTMLInputElement>('#password');
+    const password = container.querySelector<HTMLInputElement>('input[autocomplete="current-password"]');
     expect(password?.type).toBe('password');
-    container.querySelector<HTMLButtonElement>('button[aria-label="Show password"]')?.click();
+    container.querySelector<HTMLButtonElement>('button[aria-label="Tampilkan kata sandi"]')?.click();
     await nextTick();
     expect(password?.type).toBe('text');
-    container.querySelector<HTMLButtonElement>('button[aria-label="Show confirmation"]')?.click();
-    await nextTick();
-    expect(container.querySelector<HTMLInputElement>('#password-confirmation')?.type).toBe('text');
+    expect(container.querySelector('button[aria-label="Sembunyikan kata sandi"]')?.getAttribute('aria-pressed')).toBe('true');
   });
 
   it('renders the Vue 404 surface for unknown browser routes', async () => {
     await mountAt('/this-route-does-not-exist');
 
     expect(container.querySelector('[data-testid="not-found-page"]')).not.toBeNull();
-    expect(container.querySelector('h1')?.textContent).toContain('Page not found');
+    expect(container.querySelector('h1')?.textContent).toContain('Halaman tidak ditemukan');
   });
 
   it('renders the landing hero and section navigation', async () => {
@@ -121,22 +101,16 @@ describe('Vue frontend shell', () => {
     }
   });
 
-  it('shares one header frame between the landing page and the authenticated shell', async () => {
+  it('keeps the landing header links scrollable on narrow screens', async () => {
     await mountAt('/');
     const header = container.querySelector('.site-header');
     expect(header?.classList.contains('site-header--landing')).toBe(true);
     expect(header?.querySelector('nav[aria-label="Primary navigation"]')?.classList.contains('site-header-nav')).toBe(true);
     expect(header?.querySelector('.site-header-cta')?.textContent).toContain('Sign in');
 
-    const shell = readFileSync('src/app/layouts/AuthenticatedShell.vue', 'utf8');
-    expect(shell).toContain('<SiteHeader nav-label="Application navigation">');
     const css = parse(readFileSync('src/app/layouts/SiteHeader.vue', 'utf8')).descriptor.styles[0]!.content;
     // Narrow screens move the links to their own horizontally scrollable row.
     expect(css).toMatch(/@media \(max-width: 900px\) \{[^@]*\.site-header-nav \{[^}]*grid-row: 2;[^}]*overflow-x: auto;/);
-    // The application's links start-align on wide screens, which sizes the row
-    // to its links. On a narrow screen it must fill the frame instead, or links
-    // wider than the frame push the page sideways rather than scroll.
-    expect(css).toMatch(/@media \(max-width: 900px\) \{[^@]*\.site-header--app \.site-header-nav \{[^}]*justify-self: stretch;/);
   });
 
   it('keeps the hero free of decorative artwork and badges', async () => {
