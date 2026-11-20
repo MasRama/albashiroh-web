@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
@@ -50,6 +50,7 @@ import composeActivityServer, { createActivityRecorder } from './bindings/activi
 import composeMediaServer from './bindings/media.server';
 import composeContentServer from './bindings/content.server';
 import { healthRoutes } from '../features/health';
+import { describePage, renderRobots, renderShell, renderSitemap } from './site-meta';
 
 const frontendBuildDirectory = resolve(process.cwd(), 'build', 'client');
 const frontendIndex = join(frontendBuildDirectory, 'index.html');
@@ -87,8 +88,8 @@ function isStaticRequest(pathname: string): boolean {
   if (
     pathname === '/assets' ||
     pathname.startsWith('/assets/') ||
-    pathname === '/landing' ||
-    pathname.startsWith('/landing/') ||
+    pathname === '/brand' ||
+    pathname.startsWith('/brand/') ||
     pathname === '/nara.png'
   ) {
     return true;
@@ -106,9 +107,6 @@ function cacheControl(pathname: string): string {
 
 const staticHandler = frontendBuildAvailable
   ? serveStatic({ root: frontendBuildDirectory })
-  : undefined;
-const spaHandler = frontendBuildAvailable
-  ? serveStatic({ root: frontendBuildDirectory, path: 'index.html' })
   : undefined;
 
 export const app = new Hono();
@@ -235,7 +233,8 @@ if (staticHandler) {
       context.header('Cache-Control', 'no-store');
       return context.notFound();
     }
-    if (isReservedPath(requested.pathname)) return next();
+    // Page addresses get the shell with their own title and meta below, never the bare index.html.
+    if (isReservedPath(requested.pathname) || !isStaticRequest(requested.pathname)) return next();
     context.header('Cache-Control', cacheControl(requested.pathname));
     return staticHandler(context, next);
   });
@@ -253,7 +252,7 @@ app.route('/api/roles', createAccessRoutes(activity.declare('roles', ROLES_ACTIV
 composeUsersServer(app, { activity });
 composeActivityServer(app);
 composeMediaServer(app, { activity });
-composeContentServer(app, { activity });
+const site = composeContentServer(app, { activity });
 // Live updates for signed-in browsers; Auth decides who is listening and
 // whether they meet a topic's rule, as it does for every guarded route.
 app.get(
@@ -261,7 +260,28 @@ app.get(
   createEventStream({ resolve: liveListener, allows: (listener, rule) => isAllowed(listener.userId, rule) }),
 );
 
-app.get('*', async (context, next) => {
+// The public address of the site, for canonical links, link previews and the sitemap.
+const siteOrigin = env.APP_URL.replace(/\/+$/, '');
+app.get('/sitemap.xml', (context) => {
+  context.header('Cache-Control', 'public, max-age=3600');
+  context.header('Content-Type', 'application/xml; charset=utf-8');
+  return context.body(renderSitemap(site, siteOrigin));
+});
+app.get('/robots.txt', (context) => {
+  context.header('Cache-Control', 'public, max-age=3600');
+  return context.text(renderRobots(siteOrigin));
+});
+
+// Read once in production; in development a rebuild shows on the next request.
+let shellTemplate: string | undefined;
+function pageShell(): string {
+  if (shellTemplate !== undefined) return shellTemplate;
+  const template = readFileSync(frontendIndex, 'utf8');
+  if (isProductionServer) shellTemplate = template;
+  return template;
+}
+
+app.get('*', async (context) => {
   const requested = requestPath(context);
   if (requested.unsafe || isReservedPath(requested.pathname)) {
     context.header('Cache-Control', 'no-store');
@@ -271,14 +291,15 @@ app.get('*', async (context, next) => {
     context.header('Cache-Control', 'no-store');
     return context.notFound();
   }
-  if (!spaHandler) {
+  if (!frontendBuildAvailable) {
     return context.text(
       'Production frontend build is unavailable. Run npm run build before npm start.',
       503,
     );
   }
   context.header('Cache-Control', 'no-cache');
-  return spaHandler(context, next);
+  const meta = describePage(requested.pathname, site, siteOrigin);
+  return context.html(renderShell(pageShell(), meta), meta.status);
 });
 
 function ensureProductionFrontend(): void {

@@ -27,6 +27,8 @@ function contentSecurityPolicy(isProduction: boolean): string {
     `font-src 'self' data:`,
     `connect-src ${connectSrc}`,
     `media-src 'self'`,
+    // The contact page's Google Maps embed and gallery videos (YouTube without tracking cookies).
+    `frame-src https://www.google.com https://maps.google.com https://www.youtube-nocookie.com`,
     `object-src 'none'`,
     `frame-ancestors 'none'`,
     `form-action 'self'`,

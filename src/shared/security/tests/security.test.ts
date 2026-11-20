@@ -87,6 +87,14 @@ describe('security headers', () => {
     }
   });
 
+  it('frames only the map and video embeds the public pages show', async () => {
+    for (const production of [false, true]) {
+      const csp = (await probeApp(production).request('/ok')).headers.get('Content-Security-Policy') ?? '';
+      expect(csp).toContain(`frame-src https://www.google.com https://maps.google.com https://www.youtube-nocookie.com;`);
+      expect(csp).toContain(`frame-ancestors 'none'`);
+    }
+  });
+
   it('covers error responses, not just success', async () => {
     const response = await probeApp(false).request('/boom');
     expect(response.status).toBe(500);
