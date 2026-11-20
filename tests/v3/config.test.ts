@@ -108,3 +108,26 @@ describe('feature-owned environment', () => {
     );
   });
 });
+
+describe('environment file loading', () => {
+  it('reads .env without printing anything', async () => {
+    const { mkdtempSync, rmSync, writeFileSync } = await import('node:fs');
+    const { tmpdir } = await import('node:os');
+    const { join } = await import('node:path');
+    const { spawnSync } = await import('node:child_process');
+    const directory = mkdtempSync(join(tmpdir(), 'albashiroh-env-'));
+    try {
+      writeFileSync(join(directory, '.env'), 'PORT=6200\nLOG_LEVEL=error\n');
+      const envModule = join(process.cwd(), 'src/shared/config/env.ts');
+      const child = spawnSync(
+        process.execPath,
+        ['-r', join(process.cwd(), 'node_modules/ts-node/register/transpile-only.js'), '-e', `console.log(require(${JSON.stringify(envModule)}).env.PORT)`],
+        { cwd: directory, encoding: 'utf8', env: { PATH: process.env.PATH, TS_NODE_PROJECT: join(process.cwd(), 'tsconfig.json') } },
+      );
+      expect(child.stderr).toBe('');
+      expect(child.stdout.trim()).toBe('6200');
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+});
