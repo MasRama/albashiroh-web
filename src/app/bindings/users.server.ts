@@ -56,9 +56,11 @@ function createUsersServerHost(recordActivity?: UsersServerHost['recordActivity'
     listAccounts: (page, limit, search) => listAccounts(page, limit, search),
 
     // Auth refuses a taken email by throwing; Users expects it as an outcome.
+    // An administrator chose the first password, so the new staff member
+    // replaces it with their own at first sign-in.
     createAccount: (input, roleIds) => {
       try {
-        return { status: 'created', account: createAccountWithRoles(input, roleIds) };
+        return { status: 'created', account: createAccountWithRoles({ ...input, mustChangePassword: true }, roleIds) };
       } catch (error) {
         if (isDuplicateEmailError(error)) return { status: 'duplicate-email' };
         throw error;

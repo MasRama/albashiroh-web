@@ -4,6 +4,7 @@ import { app } from '../../../../app/server';
 import { getDatabase } from '../../../../shared/database';
 import { csrfHeaders, issueCsrf, mergeResponseCookies } from '../../../../shared/security/tests/helpers';
 import { comparePassword, hashPassword } from '../../server/service';
+import { createTestAccount, signIn } from '../../../../app/tests/personas';
 
 describe('auth password migration', () => {
 
@@ -21,13 +22,8 @@ describe('auth password migration', () => {
     const newPassword = 'new correct horse battery staple';
     const json = { 'Content-Type': 'application/json' };
 
-    const bootstrap = await issueCsrf(app);
-    const registerResponse = await app.request('/api/auth/register', {
-      method: 'POST',
-      headers: { ...csrfHeaders(bootstrap), ...json },
-      body: JSON.stringify({ name: 'Katherine Johnson', email, password: oldPassword }),
-    });
-    const sessionCookie = mergeResponseCookies(bootstrap.cookie, registerResponse);
+    await createTestAccount('Katherine Johnson', email, oldPassword);
+    const sessionCookie = await signIn(email, oldPassword);
     expect(sessionCookie).toContain('auth_id=');
 
     const changeState = await issueCsrf(app, sessionCookie);
@@ -61,13 +57,8 @@ describe('auth password migration', () => {
     const newPassword = 'replacement bootstrap password';
     const json = { 'Content-Type': 'application/json' };
 
-    const bootstrap = await issueCsrf(app);
-    const registerResponse = await app.request('/api/auth/register', {
-      method: 'POST',
-      headers: { ...csrfHeaders(bootstrap), ...json },
-      body: JSON.stringify({ name: 'Temporary User', email, password: oldPassword }),
-    });
-    const sessionCookie = mergeResponseCookies(bootstrap.cookie, registerResponse);
+    await createTestAccount('Temporary User', email, oldPassword);
+    const sessionCookie = await signIn(email, oldPassword);
     getDatabase().prepare('UPDATE users SET must_change_password = 1 WHERE email = ?').run(email);
 
     const me = await app.request('/api/auth/me', { headers: { Cookie: sessionCookie } });

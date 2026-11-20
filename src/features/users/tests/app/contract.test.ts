@@ -3,7 +3,7 @@ import { rm } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { app } from '../../../../app/server';
-import { usersWebHost } from '../../../../app/bindings/users.web';
+import { csrfHeaders, ensureCsrfToken } from '../../../auth/web';
 import { grantAdmin } from '../../../../app/tests/personas';
 import { installBrowser, type TestBrowser } from '../../../../shared/security/tests/browser';
 import { usersResponseSchemas } from '../../contract';
@@ -23,7 +23,7 @@ const schemas = usersResponseSchemas();
 
 describe('users web client contract', () => {
   let browser: TestBrowser;
-  const client = createUsersClient({ csrf: usersWebHost.csrf });
+  const client = createUsersClient({ csrf: { headers: (extra) => csrfHeaders(extra), ensureToken: () => ensureCsrfToken() } });
 
   beforeEach(() => {
     browser = installBrowser(app);

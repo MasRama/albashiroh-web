@@ -51,7 +51,7 @@ describe('activity capability', () => {
 
     grantAdmin(actor.id);
     const registration = await app.request(
-      `/api/activity?action=auth.registered&actorId=${encodeURIComponent(actor.id)}`,
+      `/api/activity?action=auth.login&actorId=${encodeURIComponent(actor.id)}`,
       { headers: { Cookie: actor.cookie } },
     );
     expect(registration.status).toBe(200);
@@ -60,7 +60,7 @@ describe('activity capability', () => {
       data: {
         activities: expect.arrayContaining([
           expect.objectContaining({
-            action: 'auth.registered',
+            action: 'auth.login',
             resource: 'auth',
             actorId: actor.id,
             targetId: actor.id,

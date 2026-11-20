@@ -10,15 +10,22 @@ describe('application browser routes', () => {
     expect(new Set(names).size).toBe(names.length);
   });
 
+  it('serves the admin panel under /admin, with /login kept for the sign-in page', () => {
+    expect(router.resolve('/admin/masuk').name).toBe('login');
+    expect(router.resolve('/login').name).toBe('login');
+    expect(router.resolve('/admin').name).toBe('dashboard');
+    expect(router.resolve('/register').name).toBe('not-found');
+  });
+
   it('resolves unknown browser paths to the canonical not-found route', () => {
     expect(router.resolve('/this-route-does-not-exist').name).toBe('not-found');
   });
 
   it('scrolls hash navigation to the requested section and restores browser positions', () => {
-    const from = router.resolve('/dashboard') as unknown as Parameters<typeof appScrollBehavior>[1];
-    const to = router.resolve('/profile#security') as unknown as Parameters<typeof appScrollBehavior>[0];
+    const from = router.resolve('/admin') as unknown as Parameters<typeof appScrollBehavior>[1];
+    const to = router.resolve('/admin/profil#keamanan') as unknown as Parameters<typeof appScrollBehavior>[0];
 
-    expect(appScrollBehavior(to, from, null)).toEqual({ el: '#security' });
+    expect(appScrollBehavior(to, from, null)).toEqual({ el: '#keamanan' });
     expect(appScrollBehavior(to, from, { left: 3, top: 7 })).toEqual({ left: 3, top: 7 });
   });
 });

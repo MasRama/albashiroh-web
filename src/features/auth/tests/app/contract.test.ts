@@ -7,6 +7,7 @@ import { authResponseSchemas } from '../../contract';
 import { createAccessClient, createAuthClient } from '../../web';
 import { createSecurityClient } from '../../web/security-client';
 import { totpCode, totpStep } from '../../server/totp';
+import { createReferenceAuthApp } from './accounts';
 
 /**
  * Every Auth web client method runs against the real server and its answer
@@ -43,6 +44,8 @@ describe('auth web client contract', () => {
   });
 
   it('registers, reads, and ends a session in the declared shapes', async () => {
+    // The application closes registration; Auth as it ships still answers in these shapes.
+    browser = installBrowser(createReferenceAuthApp());
     const auth = createAuthClient();
     schemas.csrfToken.parse(await (await fetch('/api/auth/csrf')).json());
     expect(schemas.error.parse(await auth.me())).toMatchObject({ code: 'UNAUTHORIZED' });

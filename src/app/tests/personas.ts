@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import {
+  createAccountWithRoles,
   createRoleWithPermissions,
   findAllPermissions,
   findAllRoles,
@@ -15,7 +16,7 @@ import { app } from '../server';
 /**
  * Test accounts for the composed application. Accounts, roles, and grants are
  * Auth's tables, so tests outside Auth make people through these helpers,
- * which register through Auth's routes and grant through its public
+ * which create accounts and grant through Auth's public
  * boundary, instead of writing those tables themselves.
  */
 export const TEST_PASSWORD = 'correct horse battery staple';
@@ -28,19 +29,24 @@ export interface Persona {
   cookie: string;
 }
 
-/** Registers through Auth's own endpoint and returns the signed-in account. */
+/**
+ * Creates an account the way an administrator does from Users, through
+ * Auth's boundary: this application closes self-registration. Returns its id.
+ */
+export async function createTestAccount(
+  name = 'Test Account',
+  email = `${randomUUID()}@example.com`,
+  password = TEST_PASSWORD,
+): Promise<string> {
+  return createAccountWithRoles({ id: randomUUID(), name, email, passwordHash: await hashPassword(password) }).id;
+}
+
+/** Creates an account and signs it in through Auth's own login endpoint. */
 export async function signUp(name = 'Test Account', email = `${randomUUID()}@example.com`): Promise<Persona> {
-  const bootstrap = await issueCsrf(app);
-  const response = await app.request('/api/auth/register', {
-    method: 'POST',
-    headers: { ...csrfHeaders(bootstrap), 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, email, password: TEST_PASSWORD }),
-  });
-  if (response.status !== 201) throw new Error(`Registration failed with ${response.status}`);
-  const payload = (await response.json()) as { data: { user: { id: string } } };
-  const cookie = mergeResponseCookies(bootstrap.cookie, response);
-  if (!cookie.includes('auth_id=')) throw new Error('Registration did not return a session cookie');
-  return { id: payload.data.user.id, name, email, cookie };
+  const id = await createTestAccount(name, email);
+  const cookie = await signIn(email, TEST_PASSWORD);
+  if (!cookie.includes('auth_id=')) throw new Error('Sign-in did not return a session cookie');
+  return { id, name, email, cookie };
 }
 
 /**

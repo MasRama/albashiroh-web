@@ -74,6 +74,7 @@ export default defineConfig({
             'src/features/health/tests/health.test.ts',
             'src/features/users/tests/app/browser.test.ts',
             'src/features/users/tests/host.test.ts',
+            'src/**/*.browser.test.ts',
           ],
         },
       },
@@ -91,6 +92,8 @@ export default defineConfig({
             'src/features/auth/tests/client.test.ts',
             'src/features/auth/tests/app/rbac-browser.test.ts',
             'src/features/activity/tests/browser.test.ts',
+            // Components and screens rendered in a DOM: <name>.browser.test.ts.
+            'src/**/*.browser.test.ts',
           ],
         },
       },

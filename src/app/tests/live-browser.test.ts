@@ -10,7 +10,7 @@ import { getDatabase, seed } from '../../shared/database';
 import { closeEventStreams } from '../../shared/realtime';
 import { readEvents, type EventReader } from '../../shared/realtime/tests/helpers';
 import { csrfHeaders, issueCsrf, mergeResponseCookies } from '../../shared/security/tests/helpers';
-import { grantRole } from './personas';
+import { createTestAccount, grantRole } from './personas';
 
 /**
  * The open tab follows the server: the real application streams events and a
@@ -83,7 +83,7 @@ function installTabFetch(): void {
         if (tabCookie) headers.set('Cookie', tabCookie);
         const response = await serverApp.request(url.pathname + url.search, { method: init?.method ?? 'GET', headers, body: init?.body });
         tabCookie = mergeResponseCookies(tabCookie, response);
-        for (const pair of tabCookie.split('; ')) if (pair.startsWith('csrf_token=')) document.cookie = pair;
+        for (const pair of tabCookie.split('; ')) if (pair.startsWith('csrf_token=')) document.cookie = `${pair}; path=/`;
         return response;
       })(),
     ),
@@ -102,11 +102,12 @@ async function asDevice(cookie: string, path: string, method: string, body?: unk
 }
 
 async function register(name = 'Live Browser'): Promise<{ id: string; email: string; cookie: string }> {
+  // Registration is closed: the account is made the way the owner makes one, then signs in.
   const email = `${randomUUID()}@example.com`;
-  const { status, cookie } = await asDevice('', '/api/auth/register', 'POST', { name, email, password: PASSWORD });
-  expect(status).toBe(201);
-  const row = getDatabase().prepare('SELECT id FROM users WHERE email = ?').get(email) as { id: string };
-  return { id: row.id, email, cookie };
+  const id = await createTestAccount(name, email, PASSWORD);
+  const { status, cookie } = await asDevice('', '/api/auth/login', 'POST', { email, password: PASSWORD });
+  expect(status).toBe(200);
+  return { id, email, cookie };
 }
 
 /** Opens the app in this tab as the account behind `cookie`. */
@@ -118,25 +119,6 @@ async function openTab(cookie: string, path: string): Promise<void> {
   const mounted = createApp(App).use(router);
   mounted.mount(container);
   application = mounted;
-  await settle();
-}
-
-/** Types into a form field the way a person would. */
-function type(selector: string, value: string): void {
-  const field = container.querySelector<HTMLInputElement>(selector);
-  expect(field).not.toBeNull();
-  field!.value = value;
-  field!.dispatchEvent(new Event('input'));
-}
-
-function fieldValue(selector: string): string | undefined {
-  return container.querySelector<HTMLInputElement>(selector)?.value;
-}
-
-async function click(selector: string): Promise<void> {
-  const button = container.querySelector<HTMLButtonElement>(selector);
-  expect(button).not.toBeNull();
-  button!.click();
   await settle();
 }
 
@@ -175,7 +157,7 @@ afterEach(async () => {
 describe('live updates in the open tab', () => {
   it('sends the tab to sign in, saying why, when another device ends its session', async () => {
     const account = await register();
-    await openTab(account.cookie, '/security');
+    await openTab(account.cookie, '/admin/keamanan');
     expect(router.currentRoute.value.name).toBe('security');
 
     const phone = await asDevice('', '/api/auth/login', 'POST', { email: account.email, password: PASSWORD });
@@ -183,8 +165,8 @@ describe('live updates in the open tab', () => {
     await settle();
 
     expect(router.currentRoute.value.name).toBe('login');
-    expect(router.currentRoute.value.query).toMatchObject({ redirect: '/security', reason: 'session-ended' });
-    expect(container.querySelector('[role="status"]')?.textContent).toContain('Your session was ended');
+    expect(router.currentRoute.value.query).toMatchObject({ redirect: '/admin/keamanan', reason: 'session-ended' });
+    expect(container.querySelector('[data-testid="sign-in-page"]')?.textContent).toContain('Sesi Anda sudah berakhir');
   });
 
   it('leaves a page as soon as an administrator takes away the permission it needs', async () => {
@@ -197,7 +179,7 @@ describe('live updates in the open tab', () => {
     ).toBe(201);
     grantRole(member.id, slug);
 
-    await openTab(member.cookie, '/activity');
+    await openTab(member.cookie, '/admin/aktivitas');
     expect(router.currentRoute.value.name).toBe('activity');
 
     const role = getDatabase().prepare('SELECT id FROM roles WHERE slug = ?').get(slug) as { id: string };
@@ -211,21 +193,23 @@ describe('live updates in the open tab', () => {
   it('shows new activity on the first page without a reload', async () => {
     const admin = await register();
     grantRole(admin.id, 'admin');
-    const member = await register();
-    await openTab(admin.cookie, '/activity');
-    const newest = () => container.querySelector('.act-event')?.textContent ?? '';
-    expect(newest()).toContain('Account registered');
+    const member = await register('Ahmad Member');
+    await openTab(admin.cookie, '/admin/aktivitas');
+    const entries = () => container.querySelectorAll('.ac-item');
+    const before = entries().length;
+    expect(before).toBeGreaterThan(0);
 
     expect((await asDevice('', '/api/auth/login', 'POST', { email: member.email, password: PASSWORD })).status).toBe(200);
     await settle();
 
-    expect(newest()).toContain('Signed in');
-    expect(newest()).toContain(member.id);
+    expect(entries()).toHaveLength(before + 1);
+    expect(entries()[0]?.textContent).toContain('Masuk');
+    expect(entries()[0]?.textContent).toContain('Ahmad Member');
   });
 
   it('lists a device as it signs in and drops it as it signs out', async () => {
     const account = await register();
-    await openTab(account.cookie, '/security');
+    await openTab(account.cookie, '/admin/keamanan');
     const devices = () => container.querySelectorAll('[data-testid="session-row"]').length;
     expect(devices()).toBe(1);
 
@@ -244,96 +228,31 @@ describe('live updates in the open tab', () => {
     grantRole(admin.id, 'admin');
     const colleague = await register();
     grantRole(colleague.id, 'admin');
-    await openTab(admin.cookie, '/roles');
+    await openTab(admin.cookie, '/admin/peran');
     const slug = `live-${randomUUID().slice(0, 8)}`;
-    expect(container.querySelector('[data-testid="role-list"]')?.textContent).not.toContain(slug);
+    expect(container.querySelector(`tr[data-role-slug="${slug}"]`)).toBeNull();
 
     expect((await asDevice(colleague.cookie, '/api/roles', 'POST', { name: 'Live Editors', slug, permissions: [] })).status).toBe(201);
     await settle();
 
-    expect(container.querySelector('[data-testid="role-list"]')?.textContent).toContain(slug);
+    expect(container.querySelector(`tr[data-role-slug="${slug}"]`)?.textContent).toContain('Live Editors');
   });
 
-  it("merges another administrator's save into an open role form and asks only about the field both changed", async () => {
+  it("shows another administrator's new account without a reload", async () => {
     const admin = await register();
     grantRole(admin.id, 'admin');
     const colleague = await register();
     grantRole(colleague.id, 'admin');
-    const slug = `live-${randomUUID().slice(0, 8)}`;
-    expect((await asDevice(colleague.cookie, '/api/roles', 'POST', { name: 'Live Editors', slug, permissions: [] })).status).toBe(201);
-    const role = getDatabase().prepare('SELECT id FROM roles WHERE slug = ?').get(slug) as { id: string };
+    await openTab(admin.cookie, '/admin/pengguna');
+    const email = `${randomUUID()}@example.com`;
+    const page = () => container.querySelector('[data-testid="users-page"]')?.textContent ?? '';
+    expect(page()).not.toContain(email);
 
-    await openTab(admin.cookie, '/roles');
-    await click(`[data-testid="edit-role-${role.id}"]`);
-    type('#role-name', 'Mine');
+    const created = await asDevice(colleague.cookie, '/api/users', 'POST', { name: 'Siti Baru', email, password: 'temporary-password', roles: [] });
+    expect(created.status).toBe(201);
     await settle();
 
-    const theirSlug = `${slug}-theirs`;
-    expect((await asDevice(colleague.cookie, `/api/roles/${role.id}`, 'PUT', { revision: 1, name: 'Theirs', slug: theirSlug })).status).toBe(200);
-    await settle();
-
-    // The slug only they changed follows their save; the name both changed waits for a choice.
-    expect(fieldValue('#role-slug')).toBe(theirSlug);
-    expect(fieldValue('#role-name')).toBe('Mine');
-    expect(container.querySelector('[data-testid="role-merge-notice"]')?.textContent).toContain('Slug');
-    const conflicts = [...container.querySelectorAll('[data-testid="role-conflicts"] [data-conflict-field]')].map((row) => row.getAttribute('data-conflict-field'));
-    expect(conflicts).toEqual(['name']);
-    expect(container.querySelector<HTMLButtonElement>('[data-testid="role-form"] button[type="submit"]')?.disabled).toBe(true);
-
-    await click('[data-testid="keep-mine-name"]');
-    expect(container.querySelector('[data-testid="role-conflicts"]')).toBeNull();
-    container.querySelector<HTMLFormElement>('[data-testid="role-form"]')!.requestSubmit();
-    await settle();
-
-    expect(getDatabase().prepare('SELECT name, slug, revision FROM roles WHERE id = ?').get(role.id)).toEqual({ name: 'Mine', slug: theirSlug, revision: 3 });
-    expect(container.querySelector('[data-testid="role-form"]')).toBeNull();
-  });
-
-  it('shows who else has the same role open, and drops them when they close it', async () => {
-    const admin = await register();
-    grantRole(admin.id, 'admin');
-    const colleague = await register('Grace Colleague');
-    grantRole(colleague.id, 'admin');
-    const slug = `live-${randomUUID().slice(0, 8)}`;
-    expect((await asDevice(colleague.cookie, '/api/roles', 'POST', { name: 'Live Editors', slug, permissions: [] })).status).toBe(201);
-    const role = getDatabase().prepare('SELECT id FROM roles WHERE slug = ?').get(slug) as { id: string };
-
-    await openTab(admin.cookie, '/roles');
-    await click(`[data-testid="edit-role-${role.id}"]`);
-    // The tab's own presence is not news to it.
-    expect(container.querySelector('[data-testid="role-editors"]')).toBeNull();
-
-    expect((await asDevice(colleague.cookie, `/api/roles/${role.id}/editing`, 'PUT')).status).toBe(200);
-    await settle();
-    expect(container.querySelector('[data-testid="role-editors"]')?.textContent).toContain('Grace Colleague is also editing this role');
-    expect(container.querySelector('[data-testid="role-editing"]')?.textContent).toContain('Grace Colleague');
-
-    expect((await asDevice(colleague.cookie, `/api/roles/${role.id}/editing`, 'DELETE')).status).toBe(200);
-    await settle();
-    expect(container.querySelector('[data-testid="role-editors"]')).toBeNull();
-  });
-
-  it("follows an administrator's change to the open profile, keeping what the account is typing", async () => {
-    const admin = await register();
-    grantRole(admin.id, 'admin');
-    const member = await register();
-
-    await openTab(member.cookie, '/profile');
-    expect(fieldValue('#name')).toBe('Live Browser');
-    const renamed = `${randomUUID()}@example.com`;
-    expect((await asDevice(admin.cookie, `/api/users/${member.id}`, 'PUT', { revision: 1, email: renamed })).status).toBe(200);
-    await settle();
-    expect(fieldValue('#email')).toBe(renamed);
-
-    type('#name', 'Typed Here');
-    await settle();
-    expect((await asDevice(admin.cookie, `/api/users/${member.id}`, 'PUT', { revision: 2, name: 'Admin Pick' })).status).toBe(200);
-    await settle();
-
-    expect(fieldValue('#name')).toBe('Typed Here');
-    expect(container.querySelector('[data-testid="profile-conflicts"] [data-conflict-field="name"]')).not.toBeNull();
-    await click('[data-testid="use-theirs-name"]');
-    expect(fieldValue('#name')).toBe('Admin Pick');
-    expect(container.querySelector('[data-testid="profile-conflicts"]')).toBeNull();
+    expect(page()).toContain('Siti Baru');
+    expect(page()).toContain(email);
   });
 });

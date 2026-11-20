@@ -2,24 +2,15 @@ import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { app } from '../../../../app/server';
 import { getDatabase, seed } from '../../../../shared/database';
-import { csrfHeaders, issueCsrf, mergeResponseCookies } from '../../../../shared/security/tests/helpers';
+import { csrfHeaders, issueCsrf } from '../../../../shared/security/tests/helpers';
 import { createRoleWithPermissions, getRolePermissions, updateRoleWithPermissions } from '../../server/access';
 import { syncDeclaredPermissions } from '../../server/permissions';
+import { signUp } from '../../../../app/tests/personas';
 
 async function registerAdmin(): Promise<string> {
-  const bootstrap = await issueCsrf(app);
-  const response = await app.request('/api/auth/register', {
-    method: 'POST',
-    headers: { ...csrfHeaders(bootstrap), 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      name: 'Access Administrator',
-      email: `${randomUUID()}@example.com`,
-      password: 'correct horse battery staple',
-    }),
-  });
-  const cookie = mergeResponseCookies(bootstrap.cookie, response);
-  if (!cookie.includes('auth_id=')) throw new Error('Registration did not return a session cookie');
-  const payload = (await response.json()) as { data: { user: { id: string } } };
+  const persona = await signUp('Access Administrator');
+  const cookie = persona.cookie;
+  const payload = { data: { user: { id: persona.id } } };
   const database = getDatabase();
   const existingRole = database.prepare('SELECT id FROM roles WHERE slug = ?').get('admin') as { id: string } | undefined;
   const roleId = existingRole?.id ?? randomUUID();
@@ -42,15 +33,8 @@ async function registerAdmin(): Promise<string> {
 
 
 async function registerUser(): Promise<{ cookie: string; id: string }> {
-  const bootstrap = await issueCsrf(app);
-  const response = await app.request('/api/auth/register', {
-    method: 'POST',
-    headers: { ...csrfHeaders(bootstrap), 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name: 'Delegated Editor', email: `${randomUUID()}@example.com`, password: 'correct horse battery staple' }),
-  });
-  const cookie = mergeResponseCookies(bootstrap.cookie, response);
-  const payload = (await response.json()) as { data: { user: { id: string } } };
-  return { cookie, id: payload.data.user.id };
+  const persona = await signUp('Delegated Editor');
+  return { cookie: persona.cookie, id: persona.id };
 }
 
 function ensurePermission(slug: string): string {

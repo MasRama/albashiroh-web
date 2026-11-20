@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { app } from '../../../../app/server';
 import { csrfHeaders, issueCsrf, mergeResponseCookies } from '../../../../shared/security/tests/helpers';
+import { createTestAccount, TEST_PASSWORD } from '../../../../app/tests/personas';
 
 function sessionId(cookieJar: string): string {
   const match = cookieJar
@@ -13,26 +14,20 @@ function sessionId(cookieJar: string): string {
 }
 
 describe('auth feature', () => {
-  it('registers, authenticates, and ends a session end-to-end', async () => {
+  it('signs in, authenticates, and ends a session end-to-end', async () => {
     const email = `${randomUUID()}@example.com`;
+    await createTestAccount('Ada Lovelace', email);
     const bootstrap = await issueCsrf(app);
     const json = { 'Content-Type': 'application/json' };
 
-    const registerResponse = await app.request('/api/auth/register', {
+    const loginResponse = await app.request('/api/auth/login', {
       method: 'POST',
       headers: { ...csrfHeaders(bootstrap), ...json },
-      body: JSON.stringify({ name: 'Ada Lovelace', email, password: 'correct horse battery staple' }),
+      body: JSON.stringify({ email, password: TEST_PASSWORD }),
     });
 
-    expect(registerResponse.status).toBe(201);
-    const registration = await registerResponse.json() as {
-      success: boolean;
-      data: { user: { email: string } };
-    };
-    expect(registration.success).toBe(true);
-    expect(registration.data.user.email).toBe(email);
-
-    const sessionCookie = mergeResponseCookies(bootstrap.cookie, registerResponse);
+    expect(loginResponse.status).toBe(200);
+    const sessionCookie = mergeResponseCookies(bootstrap.cookie, loginResponse);
     expect(sessionId(sessionCookie)).toMatch(/^auth_id=.+/);
 
     const meResponse = await app.request('/api/auth/me', {
@@ -57,43 +52,13 @@ describe('auth feature', () => {
     expect(afterLogoutResponse.status).toBe(401);
   });
 
-  it('rejects malformed registration input with field diagnostics', async () => {
+  it('answers registration like an absent route: the owner creates accounts', async () => {
     const bootstrap = await issueCsrf(app);
     const response = await app.request('/api/auth/register', {
       method: 'POST',
       headers: { ...csrfHeaders(bootstrap), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: 'A', email: 'invalid', password: 'short' }),
+      body: JSON.stringify({ name: 'Visitor', email: `${randomUUID()}@example.com`, password: TEST_PASSWORD }),
     });
-
-    expect(response.status).toBe(422);
-    await expect(response.json()).resolves.toMatchObject({
-      success: false,
-      code: 'VALIDATION_ERROR',
-      errors: {
-        name: expect.any(Array),
-        email: expect.any(Array),
-        password: expect.any(Array),
-      },
-    });
-  });
-
-  it('reports duplicate registration as a conflict', async () => {
-    const email = `${randomUUID()}@example.com`;
-    const firstCsrf = await issueCsrf(app);
-    const first = await app.request('/api/auth/register', {
-      method: 'POST',
-      headers: { ...csrfHeaders(firstCsrf), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: 'First User', email, password: 'correct horse battery staple' }),
-    });
-    expect(first.status).toBe(201);
-
-    const secondCsrf = await issueCsrf(app);
-    const duplicate = await app.request('/api/auth/register', {
-      method: 'POST',
-      headers: { ...csrfHeaders(secondCsrf), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: 'Duplicate User', email, password: 'correct horse battery staple' }),
-    });
-    expect(duplicate.status).toBe(409);
-    await expect(duplicate.json()).resolves.toMatchObject({ success: false, code: 'DUPLICATE_EMAIL' });
+    expect(response.status).toBe(404);
   });
 });

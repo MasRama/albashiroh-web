@@ -1,17 +1,17 @@
+import { History, KeyRound, LayoutDashboard, UsersRound } from 'lucide-vue-next';
 import { createRouter, createWebHistory, type RouteRecordRaw, type RouterScrollBehavior } from 'vue-router';
-import {
-  ChangePasswordPage,
-  LoginPage,
-  RegisterPage,
-  rolesAccess,
-  RolesPage,
-  SecurityPage,
-  useAuthSession,
-} from '../features/auth/web';
-import activityWebRoutes from './bindings/activity.web';
-import usersWebRoutes from './bindings/users.web';
+import { activityAccess } from '../features/activity/web';
+import { rolesAccess, useAuthSession } from '../features/auth/web';
+import { usersAccess } from '../features/users/web';
 import { canEnter } from './navigation';
-import DashboardPage from './pages/DashboardPage.vue';
+import ActivityPage from './pages/admin/ActivityPage.vue';
+import DashboardPage from './pages/admin/DashboardPage.vue';
+import PasswordPage from './pages/admin/PasswordPage.vue';
+import ProfilePage from './pages/admin/ProfilePage.vue';
+import RolesPage from './pages/admin/RolesPage.vue';
+import SecurityPage from './pages/admin/SecurityPage.vue';
+import SignInPage from './pages/admin/SignInPage.vue';
+import UsersPage from './pages/admin/UsersPage.vue';
 import HomePage from './pages/HomePage.vue';
 import NotFoundPage from './pages/NotFoundPage.vue';
 
@@ -22,43 +22,56 @@ export const appRoutes = [
     component: HomePage,
   },
   {
-    path: '/login',
+    path: '/admin/masuk',
+    alias: '/login',
     name: 'login',
-    component: LoginPage,
+    component: SignInPage,
     meta: { guestOnly: true },
   },
   {
-    path: '/register',
-    name: 'register',
-    component: RegisterPage,
-    meta: { guestOnly: true },
+    // Outside the admin shell: a forced change must happen before anything else.
+    path: '/admin/kata-sandi',
+    name: 'change-password',
+    component: PasswordPage,
+    meta: { requiresAuth: true },
   },
+  // The admin panel, in the admin shell. Routes with `admin.label` are listed
+  // in its sidebar in this order, under the rule their API enforces.
   {
-    path: '/dashboard',
+    path: '/admin',
     name: 'dashboard',
     component: DashboardPage,
-    meta: { requiresAuth: true, nav: { label: 'Dashboard' } },
+    meta: { requiresAuth: true, admin: { group: 'main', label: 'Beranda', icon: LayoutDashboard } },
   },
   {
-    path: '/change-password',
-    name: 'change-password',
-    component: ChangePasswordPage,
-    meta: { requiresAuth: true, standaloneAuth: true },
+    path: '/admin/pengguna',
+    name: 'users',
+    component: UsersPage,
+    meta: { requiresAuth: true, requiresAccess: usersAccess('users').manage('view'), admin: { group: 'system', label: 'Pengguna', icon: UsersRound } },
   },
-  // Routes with meta.nav appear in the shell's navigation in this order.
-  ...usersWebRoutes,
   {
-    path: '/roles',
+    path: '/admin/peran',
     name: 'roles',
     component: RolesPage,
-    meta: { requiresAuth: true, requiresAccess: rolesAccess('view'), nav: { label: 'Roles' } },
+    meta: { requiresAuth: true, requiresAccess: rolesAccess('view'), admin: { group: 'system', label: 'Peran & izin', icon: KeyRound } },
   },
-  ...activityWebRoutes,
   {
-    path: '/security',
+    path: '/admin/aktivitas',
+    name: 'activity',
+    component: ActivityPage,
+    meta: { requiresAuth: true, requiresAccess: activityAccess('activity').view, admin: { group: 'system', label: 'Aktivitas', icon: History } },
+  },
+  {
+    path: '/admin/profil',
+    name: 'profile',
+    component: ProfilePage,
+    meta: { requiresAuth: true, admin: { group: 'system' } },
+  },
+  {
+    path: '/admin/keamanan',
     name: 'security',
     component: SecurityPage,
-    meta: { requiresAuth: true, nav: { label: 'Security' } },
+    meta: { requiresAuth: true, admin: { group: 'system' } },
   },
   {
     path: '/:pathMatch(.*)*',

@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { app } from '../../../../app/server';
 import { csrfHeaders, issueCsrf, mergeResponseCookies } from '../../../../shared/security/tests/helpers';
+import { createTestAccount } from '../../../../app/tests/personas';
 import { totpCode, totpStep, verifyTotp } from '../../server/totp';
 
 const PASSWORD = 'correct horse battery staple';
@@ -37,11 +38,9 @@ async function send(browser: Browser, path: string, init: { method?: string; bod
 async function registerAccount(): Promise<{ email: string; browser: Browser }> {
   const email = `${randomUUID()}@example.com`;
   const browser = newBrowser();
-  const response = await send(browser, '/api/auth/register', {
-    method: 'POST',
-    body: { name: 'Grace Hopper', email, password: PASSWORD },
-  });
-  expect(response.status).toBe(201);
+  await createTestAccount('Grace Hopper', email, PASSWORD);
+  const response = await send(browser, '/api/auth/login', { method: 'POST', body: { email, password: PASSWORD } });
+  expect(response.status).toBe(200);
   return { email, browser };
 }
 

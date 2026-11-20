@@ -1,18 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { app } from '../../../../app/server';
-import { csrfHeaders, issueCsrf, mergeResponseCookies } from '../../../../shared/security/tests/helpers';
+import { csrfHeaders, issueCsrf } from '../../../../shared/security/tests/helpers';
+import { signUp } from '../../../../app/tests/personas';
 
 async function registerUser(email: string): Promise<string> {
-  const bootstrap = await issueCsrf(app);
-  const response = await app.request('/api/auth/register', {
-    method: 'POST',
-    headers: { ...csrfHeaders(bootstrap), 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name: 'Grace Hopper', email, password: 'correct horse battery staple' }),
-  });
-  const cookie = mergeResponseCookies(bootstrap.cookie, response);
-  if (!cookie.includes('auth_id=')) throw new Error('Registration did not return a session cookie');
-  return cookie;
+  return (await signUp('Grace Hopper', email)).cookie;
 }
 
 async function patchProfile(cookie: string, body: unknown) {
