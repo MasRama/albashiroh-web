@@ -4,8 +4,8 @@ import { RouterLink } from 'vue-router';
 import { siteRouteName, type SitePortal } from '../../site-map';
 import { LOGO } from '../site';
 
-/** The orange PPDB block: one registration for both schools, or a school's own invitation. */
-const props = defineProps<{ portal: SitePortal; whatsapp?: string | null }>();
+/** The orange PPDB block: one registration for both schools, or a school's own invitation. Its words are the portal's home page texts. */
+const props = defineProps<{ portal: SitePortal; kick: string; title: string; text: string; whatsapp?: string | null }>();
 const ppdb = (jenjang: 'smp' | 'sma') => ({ name: siteRouteName('yayasan', 'ppdb'), query: { jenjang } });
 const school = props.portal === 'yayasan' ? null : props.portal;
 </script>
@@ -15,10 +15,9 @@ const school = props.portal === 'yayasan' ? null : props.portal;
     <div class="s-wrap">
       <div class="s-ppdb">
         <div>
-          <div class="s-kick">{{ school ? `PPDB ${school.toUpperCase()} IT Al Bashiroh` : 'PPDB Al Bashiroh' }}</div>
-          <h2>{{ school ? 'Bergabung bersama kami.' : 'Satu pendaftaran untuk SMP dan SMA.' }}</h2>
-          <p v-if="school">Kunjungi sekolah, bertemu dengan guru, dan rasakan langsung suasana belajar di {{ school.toUpperCase() }} IT Al Bashiroh Turen.</p>
-          <p v-else>Pilih jenjang, isi formulir online, lalu pantau jadwal dan pengumuman di halaman PPDB.</p>
+          <div class="s-kick">{{ kick }}</div>
+          <h2>{{ title }}</h2>
+          <p>{{ text }}</p>
           <p v-if="!school" class="s-ppdb-note"><FileText :size="17" aria-hidden="true" /><span>Brosur dan alur pendaftaran ada di <RouterLink :to="{ name: siteRouteName('yayasan', 'dokumen') }">Download dokumen</RouterLink>.</span></p>
         </div>
         <div class="s-choice">

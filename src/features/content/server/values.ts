@@ -1,4 +1,5 @@
 import { CONTENT_TYPES, portalSettingsSchema, type ContentType, type EntryInput, type Portal, type PortalSettings } from '../contract';
+import { homeSections } from '../home';
 import type { ContentServerHost } from './host';
 import { freeSlug, slugTaken, todayInJakarta, type EntryValues } from './repository';
 import { sanitizeRichText, slugify } from './sanitize';
@@ -72,7 +73,7 @@ export function entryValues(
 /**
  * Settings as a portal keeps them: rich text sanitized, photos and documents
  * that are gone from the library dropped, Yayasan-only pages cleared on the
- * school portals.
+ * school portals, the home page kept to the sections and texts the portal has.
  */
 export function settingsValues(portal: Portal, input: PortalSettings, host: Pick<ContentServerHost, 'images' | 'files'>): Checked<PortalSettings> {
   const errors: Record<string, string[]> = {};
@@ -82,8 +83,19 @@ export function settingsValues(portal: Portal, input: PortalSettings, host: Pick
   };
   image('settings.heroImageId', settings.heroImageId);
   image('settings.prakata.photoId', settings.prakata.photoId);
+  image('settings.video.posterId', settings.video.posterId);
   const brochure = settings.ppdb.brochureFileId;
   if (brochure && !host.files([brochure]).has(brochure)) (errors['settings.ppdb.brochureFileId'] ??= []).push('Berkas ini tidak ada lagi di pustaka. Pilih berkas lain.');
+
+  // Only this portal's sections and texts are kept; a text left as its fallback is not saved, so a later change to the fallback still shows.
+  const sections = homeSections(portal);
+  const text: Record<string, string> = {};
+  for (const def of sections.flatMap((section) => section.texts)) {
+    const value = settings.home.text[def.key] ?? '';
+    if (value.length > def.max) (errors[`settings.home.text.${def.key}`] ??= []).push(`Paling banyak ${def.max} huruf`);
+    else if (value && value !== def.fallback) text[def.key] = value;
+  }
+  const hidden = sections.filter((section) => section.hideable && settings.home.hidden.includes(section.key)).map((section) => section.key);
   if (Object.keys(errors).length > 0) return { ok: false, errors };
 
   const school = portal !== 'yayasan';
@@ -91,6 +103,7 @@ export function settingsValues(portal: Portal, input: PortalSettings, host: Pick
     ok: true,
     values: {
       ...settings,
+      home: { hidden, text },
       stats: settings.stats.filter((stat) => stat.value || stat.label),
       kompetensi: settings.kompetensi.filter((row) => row.name),
       profil: sanitizeRichText(settings.profil),

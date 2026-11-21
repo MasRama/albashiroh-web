@@ -104,7 +104,7 @@ export function portalSummary(portal: Portal, host: Refs): TypeSummary[] {
 
 function settingsMediaIds(settings: PortalSettings): { images: string[]; files: string[] } {
   return {
-    images: [settings.heroImageId, settings.prakata.photoId].filter((value): value is string => Boolean(value)),
+    images: [settings.heroImageId, settings.prakata.photoId, settings.video.posterId].filter((value): value is string => Boolean(value)),
     files: [settings.ppdb.brochureFileId].filter((value): value is string => Boolean(value)),
   };
 }

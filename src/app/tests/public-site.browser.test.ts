@@ -177,6 +177,53 @@ describe('the public site', () => {
     expect(container.querySelector('.site')?.classList.contains('site--smp')).toBe(true);
   });
 
+  it('plays the profile video on a home page once the visitor asks, and shows nothing while no link is set', async () => {
+    await visit('/smp');
+    expect(container.querySelector('.pv')).toBeNull();
+
+    await saveSettings('yayasan', (settings) => {
+      settings.video.url = 'https://www.youtube.com/watch?v=abcdefghijk';
+      settings.home.text['video.title'] = 'Sehari di Al Bashiroh.';
+    });
+    forgetPortals();
+    await visit('/');
+    expect(container.querySelector('.pv h2')?.textContent).toBe('Sehari di Al Bashiroh.');
+    expect(container.querySelector('.pv .s-kick')?.textContent).toBe('Video profil');
+    // YouTube is not contacted for the player until play is pressed.
+    expect(container.querySelector('.pv iframe')).toBeNull();
+    expect(container.querySelector<HTMLImageElement>('.pv-poster img')?.src).toBe('https://i.ytimg.com/vi/abcdefghijk/maxresdefault.jpg');
+    container.querySelector<HTMLButtonElement>('.pv-poster')!.click();
+    await settle();
+    expect(container.querySelector<HTMLIFrameElement>('.pv iframe')?.src).toBe('https://www.youtube-nocookie.com/embed/abcdefghijk?autoplay=1&rel=0');
+  });
+
+  it('shows the words the school wrote for a home page section, and leaves out a section it took off', async () => {
+    await publish('sma', 'faq', { title: 'Apakah siswa wajib berasrama?', body: '<p>Ya.</p>' });
+    await saveSettings('sma', (settings) => {
+      settings.home.hidden = ['faq'];
+      settings.home.text = { 'news.title': 'Cerita dari SMA.', 'hero.primary': 'Gabung sekarang', 'ppdb.title': 'Ayo sekolah di sini.' };
+    });
+    await saveSettings('yayasan', (settings) => {
+      settings.home.hidden = ['schools', 'ppdb'];
+      settings.home.text = { 'takhosus.value': '15', 'about.guruTitle': 'Para pendidik' };
+    });
+
+    await visit('/sma');
+    expect(text()).toContain('Cerita dari SMA.');
+    expect(text()).not.toContain('Berita & agenda terbaru.');
+    expect(container.querySelector('.hero-cta a')?.textContent?.trim()).toBe('Gabung sekarang');
+    expect(container.querySelector('.s-ppdb h2')?.textContent).toBe('Ayo sekolah di sini.');
+    expect(text()).not.toContain('Apakah siswa wajib berasrama?');
+
+    await visit('/');
+    expect(container.querySelector('.yh-portals')).toBeNull();
+    expect(container.querySelector('.s-ppdb')).toBeNull();
+    expect(container.querySelector('.yh-big')?.textContent).toBe('15juz');
+    expect(text()).toContain('Para pendidik');
+    // A text the school left alone keeps its wording.
+    expect(text()).toContain('Kabar terbaru.');
+  });
+
   it('answers an unpublished article address with the 404 page', async () => {
     await publish('smp', 'berita', { title: 'Masih draf', status: 'draft' });
 

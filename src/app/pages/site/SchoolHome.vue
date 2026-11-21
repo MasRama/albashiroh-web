@@ -6,21 +6,24 @@ import AgendaPanel from '../../site/components/AgendaPanel.vue';
 import FaqList from '../../site/components/FaqList.vue';
 import NewsCard from '../../site/components/NewsCard.vue';
 import PpdbBlock from '../../site/components/PpdbBlock.vue';
+import ProfileVideo from '../../site/components/ProfileVideo.vue';
 import SiteHero from '../../site/components/SiteHero.vue';
 import SitePhoto from '../../site/components/SitePhoto.vue';
-import { LOGO, pageTitle, portalImage, splitTarget, useEntries, usePortal, useTitle, whatsappLink } from '../../site/site';
+import { LOGO, pageTitle, portalImage, splitTarget, useEntries, useHome, usePortal, useTitle, whatsappLink } from '../../site/site';
 import { entryPath, siteRouteName, SITE_PORTAL_NAMES } from '../../site-map';
 
 /**
  * A school's portal home, as in the approved SMA mockup: the hero with the
- * school's vision, the head's foreword with the mission, academics, clubs,
- * graduate competencies, news beside the agenda, achievements (and alumni at
- * the SMA), questions, and PPDB. A section with nothing published stays out.
+ * school's vision, the profile video, the head's foreword with the mission,
+ * academics, clubs, graduate competencies, news beside the agenda,
+ * achievements (and alumni at the SMA), questions, and PPDB. A section with
+ * nothing published stays out; the school sets each section's words in the
+ * admin, and may take one off.
  */
 const props = defineProps<{ portal: 'smp' | 'sma' }>();
 const data = usePortal(() => props.portal);
 const settings = computed(() => data.value?.settings);
-const level = computed(() => props.portal.toUpperCase());
+const home = useHome(() => props.portal, data);
 const names = computed(() => SITE_PORTAL_NAMES[props.portal]);
 useTitle(() => pageTitle(props.portal, null, settings.value));
 
@@ -66,7 +69,8 @@ const ACADEMIC_ICONS = [LayoutGrid, CalendarDays, BookOpen];
 const whatsapp = computed(() =>
   settings.value?.contact.whatsapp ? whatsappLink(settings.value.contact.whatsapp, `Assalamualaikum, saya ingin bertanya tentang ${names.value.name}.`) : null,
 );
-const hasAchievements = computed(() => Boolean(achievements.page.value?.items.length || alumni.page.value?.items.length));
+const shownAchievements = computed(() => (home.shown('prestasi') ? achievements.page.value?.items ?? [] : []));
+const shownAlumni = computed(() => (home.shown('alumni') ? alumni.page.value?.items[0] ?? null : null));
 </script>
 
 <template>
@@ -80,18 +84,27 @@ const hasAchievements = computed(() => Boolean(achievements.page.value?.items.le
       :dark="portal === 'sma'"
     >
       <template #actions>
-        <RouterLink :to="{ name: siteRouteName('yayasan', 'ppdb'), query: { jenjang: portal } }" class="s-btn s-btn--or">Daftar ke {{ level }} <ArrowRight :size="17" :stroke-width="2.3" aria-hidden="true" /></RouterLink>
-        <RouterLink :to="route('profil')" class="s-btn s-btn--ghost">Profil sekolah</RouterLink>
+        <RouterLink :to="{ name: siteRouteName('yayasan', 'ppdb'), query: { jenjang: portal } }" class="s-btn s-btn--or">{{ home.text('hero.primary') }} <ArrowRight :size="17" :stroke-width="2.3" aria-hidden="true" /></RouterLink>
+        <RouterLink :to="route('profil')" class="s-btn s-btn--ghost">{{ home.text('hero.secondary') }}</RouterLink>
       </template>
       <template #card>
         <RouterLink :to="route('profil')" class="sh-card">
           <span class="sh-card-logo"><img :src="LOGO[portal]" alt="" width="58" height="58" /></span>
-          <span><small>Visi sekolah</small><b>{{ settings?.visi || settings?.tagline || 'Bertaqwa, berilmu, dan mandiri.' }}</b></span>
+          <span><small>{{ home.text('hero.cardLabel') }}</small><b>{{ settings?.visi || settings?.tagline || 'Bertaqwa, berilmu, dan mandiri.' }}</b></span>
         </RouterLink>
       </template>
     </SiteHero>
 
-    <section v-if="settings && (settings.prakata.body || misi.length)" class="s-sec">
+    <ProfileVideo
+      v-if="settings && home.shown('video')"
+      :url="settings.video.url"
+      :poster="portalImage(data, settings.video.posterId)"
+      :kick="home.text('video.kick')"
+      :title="home.text('video.title')"
+      :lead="home.text('video.lead')"
+    />
+
+    <section v-if="settings && home.shown('prakata') && (settings.prakata.body || misi.length)" class="s-sec">
       <div class="s-wrap">
         <div class="sh-head">
           <div class="sh-head-photo">
@@ -100,12 +113,12 @@ const hasAchievements = computed(() => Boolean(achievements.page.value?.items.le
             <div v-if="settings.prakata.name" class="sh-who"><b>{{ settings.prakata.name }}</b><span>{{ settings.prakata.role || `Kepala ${names.name}` }}</span></div>
           </div>
           <div class="sh-head-text">
-            <div class="s-kick">Prakata kepala sekolah</div>
-            <h2>Assalamu'alaikum warahmatullahi wabarakatuh.</h2>
+            <div class="s-kick">{{ home.text('prakata.kick') }}</div>
+            <h2>{{ home.text('prakata.title') }}</h2>
             <!-- eslint-disable-next-line vue/no-v-html -- sanitized on save by the content feature -->
             <div v-if="settings.prakata.body" class="sh-prakata ab-prose" v-html="settings.prakata.body" />
             <div v-if="misi.length" class="sh-misi">
-              <h3>Misi sekolah</h3>
+              <h3>{{ home.text('prakata.misiTitle') }}</h3>
               <ol>
                 <li v-for="(line, index) in misi" :key="index"><b>{{ String(index + 1).padStart(2, '0') }}</b>{{ line }}</li>
               </ol>
@@ -115,10 +128,10 @@ const hasAchievements = computed(() => Boolean(achievements.page.value?.items.le
       </div>
     </section>
 
-    <section v-if="academics.page.value?.items.length" class="s-sec">
+    <section v-if="home.shown('akademik') && academics.page.value?.items.length" class="s-sec">
       <div class="s-wrap">
         <div class="s-head">
-          <div><div class="s-kick">Akademik</div><h2 class="s-h2">Kurikulum, kalender, dan program belajar.</h2></div>
+          <div><div class="s-kick">{{ home.text('akademik.kick') }}</div><h2 class="s-h2">{{ home.text('akademik.title') }}</h2></div>
           <RouterLink :to="route('akademik')" class="s-more">Semua info akademik <ArrowRight :size="16" :stroke-width="2.3" aria-hidden="true" /></RouterLink>
         </div>
         <div class="sh-aka" :class="`sh-aka--${academics.page.value.items.length}`">
@@ -140,10 +153,10 @@ const hasAchievements = computed(() => Boolean(achievements.page.value?.items.le
       </div>
     </section>
 
-    <section v-if="clubs.page.value?.items.length" class="s-sec">
+    <section v-if="home.shown('ekskul') && clubs.page.value?.items.length" class="s-sec">
       <div class="s-wrap">
         <div class="s-head">
-          <div><div class="s-kick">Ekstrakurikuler</div><h2 class="s-h2">Minat dan bakat di luar kelas.</h2></div>
+          <div><div class="s-kick">{{ home.text('ekskul.kick') }}</div><h2 class="s-h2">{{ home.text('ekskul.title') }}</h2></div>
           <RouterLink :to="route('ekskul')" class="s-more">Semua ekskul <ArrowRight :size="16" :stroke-width="2.3" aria-hidden="true" /></RouterLink>
         </div>
         <div class="sh-eks" :class="`sh-eks--${clubs.page.value.items.length}`">
@@ -156,21 +169,22 @@ const hasAchievements = computed(() => Boolean(achievements.page.value?.items.le
       </div>
     </section>
 
-    <section v-if="competencies.length" class="s-sec">
+    <section v-if="home.shown('kompetensi') && competencies.length" class="s-sec">
       <div class="s-wrap">
         <div class="sh-quran">
           <div class="sh-quran-l">
-            <div class="s-kick">Standar kompetensi lulusan</div>
+            <div class="s-kick">{{ home.text('kompetensi.kick') }}</div>
             <div v-if="headline" class="sh-big">{{ headline.value }}<small>{{ headline.unit }}</small></div>
-            <h3>Target setiap lulusan {{ level }}.</h3>
-            <p v-if="headline">Setiap lulusan menuntaskan {{ headline.name.toLowerCase() }} sebagai bagian dari standar kompetensi sekolah.</p>
+            <h3>{{ home.text('kompetensi.title') }}</h3>
+            <p v-if="home.text('kompetensi.text')">{{ home.text('kompetensi.text') }}</p>
+            <p v-else-if="headline">Setiap lulusan menuntaskan {{ headline.name.toLowerCase() }} sebagai bagian dari standar kompetensi sekolah.</p>
             <div class="sh-quran-go">
               <RouterLink :to="{ name: siteRouteName('yayasan', 'takhosus') }" class="s-btn s-btn--or s-btn--sm">Program Takhosus 30 juz <ArrowRight :size="17" :stroke-width="2.3" aria-hidden="true" /></RouterLink>
             </div>
           </div>
           <div class="sh-quran-r">
-            <h4>Kompetensi yang wajib dikuasai</h4>
-            <p class="sh-sub">Kompetensi yang wajib dimiliki setiap lulusan {{ names.name }}.</p>
+            <h4>{{ home.text('kompetensi.tableTitle') }}</h4>
+            <p class="sh-sub">{{ home.text('kompetensi.tableLead') }}</p>
             <table class="s-skl sh-skl">
               <thead><tr><th scope="col">Kompetensi</th><th scope="col" class="c"><span class="s-dot" style="background: var(--acc)" />Target</th></tr></thead>
               <tbody>
@@ -185,10 +199,10 @@ const hasAchievements = computed(() => Boolean(achievements.page.value?.items.le
       </div>
     </section>
 
-    <section class="s-sec">
+    <section v-if="home.shown('news')" class="s-sec">
       <div class="s-wrap">
         <div class="s-head">
-          <div><div class="s-kick">Kabar {{ level }}</div><h2 class="s-h2">Berita &amp; agenda terbaru.</h2></div>
+          <div><div class="s-kick">{{ home.text('news.kick') }}</div><h2 class="s-h2">{{ home.text('news.title') }}</h2></div>
           <RouterLink :to="route('berita')" class="s-more">Semua berita <ArrowRight :size="16" :stroke-width="2.3" aria-hidden="true" /></RouterLink>
         </div>
         <div class="sh-news" :style="{ '--news': news.page.value?.items.length || 3 }">
@@ -202,25 +216,25 @@ const hasAchievements = computed(() => Boolean(achievements.page.value?.items.le
       </div>
     </section>
 
-    <section v-if="hasAchievements" class="s-sec">
+    <section v-if="shownAchievements.length || shownAlumni" class="s-sec">
       <div class="s-wrap">
-        <div class="sh-pa" :class="{ 'sh-pa--one': !alumni.page.value?.items.length || !achievements.page.value?.items.length }">
-          <div v-if="achievements.page.value?.items.length" class="sh-pres">
-            <div class="s-kick">Prestasi</div>
-            <h3>Capaian siswa {{ level }}.</h3>
-            <div v-for="item in achievements.page.value.items" :key="item.id" class="sh-pr">
+        <div class="sh-pa" :class="{ 'sh-pa--one': !shownAlumni || !shownAchievements.length }">
+          <div v-if="shownAchievements.length" class="sh-pres">
+            <div class="s-kick">{{ home.text('prestasi.kick') }}</div>
+            <h3>{{ home.text('prestasi.title') }}</h3>
+            <div v-for="item in shownAchievements" :key="item.id" class="sh-pr">
               <span class="sh-medal" aria-hidden="true"><Trophy :size="22" /></span>
               <span class="sh-pr-text"><b>{{ item.title }}</b><span>{{ [item.fields.student, item.fields.level].filter(Boolean).join(' · ') }}</span></span>
               <span v-if="item.date" class="sh-yr">{{ item.date.slice(0, 4) }}</span>
             </div>
             <div class="sh-pres-go"><RouterLink :to="route('prestasi')" class="s-btn s-btn--or s-btn--sm">Semua prestasi <ArrowRight :size="17" :stroke-width="2.3" aria-hidden="true" /></RouterLink></div>
           </div>
-          <div v-if="alumni.page.value?.items[0]" class="sh-alum">
-            <div class="sh-alum-photo"><SitePhoto :image="alumni.page.value.items[0].image" :title="alumni.page.value.items[0].title" tone="sun" scale="s" sizes="(max-width: 640px) 100vw, 40vw" /></div>
+          <div v-if="shownAlumni" class="sh-alum">
+            <div class="sh-alum-photo"><SitePhoto :image="shownAlumni.image" :title="shownAlumni.title" tone="sun" scale="s" sizes="(max-width: 640px) 100vw, 40vw" /></div>
             <div class="sh-alum-body">
-              <div class="s-kick">Alumni</div>
-              <h3>Jejak lulusan Al Bashiroh.</h3>
-              <p>Kabar alumni, kampus dan karier lulusan, serta jalur untuk tetap terhubung dengan sekolah.</p>
+              <div class="s-kick">{{ home.text('alumni.kick') }}</div>
+              <h3>{{ home.text('alumni.title') }}</h3>
+              <p>{{ home.text('alumni.text') }}</p>
               <div class="sh-alum-go"><RouterLink :to="route('alumni')" class="s-btn s-btn--ink s-btn--sm">Lihat alumni <ArrowRight :size="17" :stroke-width="2.3" aria-hidden="true" /></RouterLink></div>
             </div>
           </div>
@@ -228,13 +242,13 @@ const hasAchievements = computed(() => Boolean(achievements.page.value?.items.le
       </div>
     </section>
 
-    <section v-if="faq.page.value?.items.length" class="s-sec">
+    <section v-if="home.shown('faq') && faq.page.value?.items.length" class="s-sec">
       <div class="s-wrap">
         <div class="sh-faq">
           <div>
-            <div class="s-kick">Q&amp;A</div>
-            <h2 class="s-h2">Pertanyaan yang sering ditanyakan.</h2>
-            <p class="s-lead">Belum menemukan jawabannya? Tanyakan langsung kepada kami.</p>
+            <div class="s-kick">{{ home.text('faq.kick') }}</div>
+            <h2 class="s-h2">{{ home.text('faq.title') }}</h2>
+            <p class="s-lead">{{ home.text('faq.lead') }}</p>
             <div class="sh-faq-go">
               <a v-if="whatsapp" :href="whatsapp" target="_blank" rel="noopener noreferrer" class="s-btn s-btn--ink">Tanya lewat WhatsApp <ArrowRight :size="17" :stroke-width="2.3" aria-hidden="true" /></a>
               <RouterLink :to="route('faq')" class="s-btn s-btn--line">Semua pertanyaan</RouterLink>
@@ -245,7 +259,7 @@ const hasAchievements = computed(() => Boolean(achievements.page.value?.items.le
       </div>
     </section>
 
-    <PpdbBlock :portal="portal" :whatsapp="whatsapp" />
+    <PpdbBlock v-if="home.shown('ppdb')" :portal="portal" :kick="home.text('ppdb.kick')" :title="home.text('ppdb.title')" :text="home.text('ppdb.text')" :whatsapp="whatsapp" />
   </div>
 </template>
 
