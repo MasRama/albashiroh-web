@@ -1,6 +1,9 @@
 import { ref, shallowRef, watchEffect, type Ref } from 'vue';
 import {
   createSiteClient,
+  homeShown,
+  homeText,
+  youtubeId,
   type ContentType,
   type EntryImage,
   type Portal,
@@ -85,6 +88,16 @@ export function useEntries(source: () => { portal: Portal; type: ContentType; qu
   return { page, failed };
 }
 
+export { youtubeId };
+
+/** A home page's words and sections as its portal set them: `text('news.title')`, `shown('news')`. */
+export function useHome(portal: () => Portal, data: Ref<SitePortalData | null>) {
+  return {
+    text: (key: string) => homeText(portal(), data.value?.settings.home, key),
+    shown: (section: string) => homeShown(data.value?.settings.home, section),
+  };
+}
+
 export function portalImage(data: SitePortalData | null, id: string | null | undefined): EntryImage | null {
   return data && id ? data.images[id] ?? null : null;
 }
@@ -103,13 +116,6 @@ export function agendaTile(ymd: string | null): { top: string; bottom: string } 
   if (!ymd) return { top: 'TBA', bottom: 'Segera' };
   const [, month, day] = ymd.split('-').map(Number);
   return { top: String(day), bottom: MONTHS[month! - 1]!.slice(0, 3) };
-}
-
-/** The YouTube id in a watch, short or embed link. */
-export function youtubeId(url: string | undefined): string | null {
-  if (!url) return null;
-  const match = /(?:youtu\.be\/|youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/|live\/))([\w-]{11})/.exec(url);
-  return match ? match[1]! : null;
 }
 
 /** The YouTube thumbnail of a gallery video, for an item without a photo of its own. */

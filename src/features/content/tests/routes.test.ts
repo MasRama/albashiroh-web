@@ -259,6 +259,49 @@ describe('portal settings', () => {
     const gone = await send(YAYASAN_EDITOR, 'PUT', '/yayasan/settings', { settings: { ...settings, heroImageId: GONE }, revision: 1 });
     await expect(gone.json()).resolves.toMatchObject({ errors: { 'settings.heroImageId': [expect.any(String)] } });
   });
+
+  it('keeps the profile video and the home page texts and sections the portal has', async () => {
+    const saved = await data<{ record: PortalSettingsRecord }>(
+      await send(SMP_EDITOR, 'PUT', '/smp/settings', {
+        settings: {
+          video: { url: 'https://youtu.be/abcdefghijk', posterId: PHOTO },
+          home: {
+            // The hero cannot be taken off, the alumni card is the SMA's, and nobody has a "bonus" section.
+            hidden: ['faq', 'hero', 'alumni', 'bonus'],
+            text: {
+              'news.title': '  Kabar dari kelas.  ',
+              // Typed back to the fallback: not kept, so the page follows the fallback.
+              'faq.kick': 'Q&A',
+              'alumni.title': 'Bukan milik SMP',
+              'takhosus.title': 'Milik Yayasan',
+            },
+          },
+        },
+        revision: 0,
+      }),
+    );
+    expect(saved.record.settings.video).toEqual({ url: 'https://youtu.be/abcdefghijk', posterId: PHOTO });
+    expect(saved.record.settings.home).toEqual({ hidden: ['faq'], text: { 'news.title': 'Kabar dari kelas.' } });
+    expect(saved.record.images[PHOTO]).toMatchObject({ id: PHOTO });
+
+    const site = await data<{ settings: PortalSettingsRecord['settings'] }>(await app.request('/api/site/smp'));
+    expect(site.settings.home.text['news.title']).toBe('Kabar dari kelas.');
+
+    const invalid = await send(SMP_EDITOR, 'PUT', '/smp/settings', {
+      settings: { video: { url: 'https://vimeo.com/123456', posterId: GONE }, home: { text: { 'hero.primary': 'x'.repeat(41) } } },
+      revision: 1,
+    });
+    expect(invalid.status).toBe(422);
+    const body = (await invalid.json()) as { errors: Record<string, string[]> };
+    expect(Object.keys(body.errors)).toEqual(['settings.video.url']);
+
+    const checked = await send(SMP_EDITOR, 'PUT', '/smp/settings', {
+      settings: { video: { url: '', posterId: GONE }, home: { text: { 'hero.primary': 'x'.repeat(41) } } },
+      revision: 1,
+    });
+    const errors = ((await checked.json()) as { errors: Record<string, string[]> }).errors;
+    expect(Object.keys(errors).sort()).toEqual(['settings.home.text.hero.primary', 'settings.video.posterId']);
+  });
 });
 
 describe('public site reads', () => {

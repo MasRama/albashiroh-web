@@ -3,6 +3,7 @@ import { defineAsyncComponent } from 'vue';
 /** Content's browser surface: the admin client, the article editor, and the type and portal definitions pages are built from. */
 export { contentRefusalText, createContentClient, fieldError, type ContentClient, type EntryListQuery } from './client';
 export { createSiteClient, type SiteClient, type SiteListQuery, type SitePortalData, type SiteResult } from './site';
+export { homeSections, homeShown, homeText, youtubeId, type HomeSectionDef, type HomeSettings, type HomeTextDef } from '../home';
 export {
   AGGREGATED_TYPES,
   CONTENT_PERMISSIONS,

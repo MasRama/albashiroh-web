@@ -17,9 +17,12 @@ import { AbButton, AbCard, AbDialog, AbField, AbNotice, AbPage, AbSpinner, dateT
 import { mergeStale } from '../../account';
 import { contentClient } from '../../cms';
 import { PORTAL_LABEL, portalRoute } from '../../content-admin';
+import HomeSectionsEditor from './HomeSectionsEditor.vue';
+import ProfileVideoCard from './ProfileVideoCard.vue';
 
 /**
- * A portal's own text: the home page hero and numbers, vision and mission,
+ * A portal's own text: the home page hero and numbers, its profile video,
+ * the words and visibility of each home page section, vision and mission,
  * profile, the head's welcome, graduate competencies, contact details and
  * the PPDB page. The Yayasan also writes its Takhosus and boarding pages.
  */
@@ -152,6 +155,12 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', beforeUnload));
           </div>
           <AbButton v-if="draft.stats.length < 4" variant="outline" size="sm" @click="addStat"><Plus :size="16" />Tambah angka</AbButton>
         </fieldset>
+      </AbCard>
+
+      <ProfileVideoCard v-model="draft.video" :errors="errors" />
+
+      <AbCard title="Bagian halaman depan" description="Urut seperti di situs. Buka sebuah bagian untuk mengubah teksnya; teks yang dikosongkan memakai kalimat bawaan yang tertulis di kotaknya.">
+        <HomeSectionsEditor v-model="draft.home" :portal="portal" :errors="errors" />
       </AbCard>
 
       <AbCard title="Visi dan misi">

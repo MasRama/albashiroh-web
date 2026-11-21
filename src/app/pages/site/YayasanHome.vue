@@ -5,20 +5,23 @@ import { RouterLink } from 'vue-router';
 import AgendaPanel from '../../site/components/AgendaPanel.vue';
 import NewsCard from '../../site/components/NewsCard.vue';
 import PpdbBlock from '../../site/components/PpdbBlock.vue';
+import ProfileVideo from '../../site/components/ProfileVideo.vue';
 import SiteHero from '../../site/components/SiteHero.vue';
 import SitePhoto from '../../site/components/SitePhoto.vue';
-import { LOGO, portalImage, textOf, useEntries, usePortal, useTitle, videoThumb, whatsappLink } from '../../site/site';
+import { LOGO, portalImage, textOf, useEntries, useHome, usePortal, useTitle, videoThumb, whatsappLink } from '../../site/site';
 import { siteRouteName } from '../../site-map';
 
 /**
- * The Yayasan home, as in the approved mockup: the hero, the two schools,
- * Takhosus with the graduate competencies of both, the ways into the site,
- * the latest news beside the agenda, the gallery, and PPDB.
+ * The Yayasan home, as in the approved mockup: the hero, the profile video,
+ * the two schools, Takhosus with the graduate competencies of both, the ways
+ * into the site, the latest news beside the agenda, the gallery, and PPDB.
+ * The school sets each section's words in the admin, and may take one off.
  */
 const yayasan = usePortal(() => 'yayasan');
 const smp = usePortal(() => 'smp');
 const sma = usePortal(() => 'sma');
 const settings = computed(() => yayasan.value?.settings);
+const home = useHome(() => 'yayasan', yayasan);
 useTitle(() => 'Al Bashiroh | Yayasan Bashiroh Robbaniyah');
 
 const news = useEntries(() => ({ portal: 'yayasan', type: 'berita', query: { limit: 3 } }));
@@ -81,22 +84,31 @@ const whatsapp = computed(() => (settings.value?.contact.whatsapp ? whatsappLink
       cover-title="Al Bashiroh"
     >
       <template #actions>
-        <RouterLink :to="route('ppdb')" class="s-btn s-btn--or">Daftar PPDB <ArrowRight :size="17" :stroke-width="2.3" aria-hidden="true" /></RouterLink>
-        <RouterLink :to="route('profil')" class="s-btn s-btn--ghost">Profil yayasan</RouterLink>
+        <RouterLink :to="route('ppdb')" class="s-btn s-btn--or">{{ home.text('hero.primary') }} <ArrowRight :size="17" :stroke-width="2.3" aria-hidden="true" /></RouterLink>
+        <RouterLink :to="route('profil')" class="s-btn s-btn--ghost">{{ home.text('hero.secondary') }}</RouterLink>
       </template>
       <template #card>
         <RouterLink :to="route('takhosus')" class="yh-tahfidz">
-          <span class="yh-tahfidz-n"><b>30</b><span>Juz</span></span>
-          <span class="yh-tahfidz-t">Takhosus Al-Qur'an, program unggulan yayasan</span>
+          <span class="yh-tahfidz-n"><b>{{ home.text('hero.cardValue') }}</b><span>{{ home.text('hero.cardUnit') }}</span></span>
+          <span class="yh-tahfidz-t">{{ home.text('hero.cardText') }}</span>
         </RouterLink>
       </template>
     </SiteHero>
 
-    <section class="s-sec">
+    <ProfileVideo
+      v-if="settings && home.shown('video')"
+      :url="settings.video.url"
+      :poster="portalImage(yayasan, settings.video.posterId)"
+      :kick="home.text('video.kick')"
+      :title="home.text('video.title')"
+      :lead="home.text('video.lead')"
+    />
+
+    <section v-if="home.shown('schools')" class="s-sec">
       <div class="s-wrap">
         <div class="s-head">
-          <div><div class="s-kick">Dua jenjang, satu yayasan</div><h2 class="s-h2">Pilih sekolah putra-putri Anda.</h2></div>
-          <p class="s-lead yh-lead">Setiap jenjang punya portal sendiri: akademik, ekstrakurikuler, prestasi, dan tanya jawab.</p>
+          <div><div class="s-kick">{{ home.text('schools.kick') }}</div><h2 class="s-h2">{{ home.text('schools.title') }}</h2></div>
+          <p class="s-lead yh-lead">{{ home.text('schools.lead') }}</p>
         </div>
         <div class="yh-portals">
           <article v-for="school in schools" :key="school.portal" class="yh-portal" :class="`yh-portal--${school.portal}`">
@@ -116,20 +128,20 @@ const whatsapp = computed(() => (settings.value?.contact.whatsapp ? whatsappLink
       </div>
     </section>
 
-    <section class="s-sec">
+    <section v-if="home.shown('takhosus')" class="s-sec">
       <div class="s-wrap">
         <div class="yh-quran">
           <div class="yh-quran-l">
-            <div class="s-kick yh-sun">Program unggulan</div>
-            <div class="yh-big">30<small>juz</small></div>
-            <h3>Takhosus Al-Qur'an</h3>
-            <p>Program hafalan Al-Qur'an 30 juz di bawah yayasan, berjalan bersama kehidupan asrama.</p>
+            <div class="s-kick yh-sun">{{ home.text('takhosus.kick') }}</div>
+            <div class="yh-big">{{ home.text('takhosus.value') }}<small>{{ home.text('takhosus.unit') }}</small></div>
+            <h3>{{ home.text('takhosus.title') }}</h3>
+            <p>{{ home.text('takhosus.text') }}</p>
             <div class="yh-quran-go"><RouterLink :to="route('takhosus')" class="s-btn s-btn--or s-btn--sm">Tentang program <ArrowRight :size="17" :stroke-width="2.3" aria-hidden="true" /></RouterLink></div>
           </div>
           <div class="yh-quran-r">
             <template v-if="competencies.length">
-              <h4>Target kompetensi lulusan</h4>
-              <p class="yh-sub">Yang wajib dikuasai setiap lulusan reguler.</p>
+              <h4>{{ home.text('takhosus.tableTitle') }}</h4>
+              <p class="yh-sub">{{ home.text('takhosus.tableLead') }}</p>
               <table class="s-skl">
                 <thead>
                   <tr>
@@ -148,7 +160,7 @@ const whatsapp = computed(() => (settings.value?.contact.whatsapp ? whatsappLink
               </table>
             </template>
             <template v-else>
-              <h4>Hafalan, adab, dan kemandirian</h4>
+              <h4>{{ home.text('takhosus.altTitle') }}</h4>
               <p class="yh-sub yh-sub--text">{{ takhosusText || "Santri Takhosus menghafal Al-Qur'an 30 juz dengan bimbingan musyrif, sambil menjalani kehidupan asrama yang tertib dan penuh adab." }}</p>
               <RouterLink :to="route('keasramaan')" class="s-more yh-more">Kehidupan asrama <ArrowRight :size="16" :stroke-width="2.3" aria-hidden="true" /></RouterLink>
             </template>
@@ -157,42 +169,42 @@ const whatsapp = computed(() => (settings.value?.contact.whatsapp ? whatsappLink
       </div>
     </section>
 
-    <section class="s-sec">
+    <section v-if="home.shown('about')" class="s-sec">
       <div class="s-wrap">
         <div class="s-head">
-          <div><div class="s-kick">Kenali Al Bashiroh</div><h2 class="s-h2">Belajar, tinggal, dan tumbuh di satu lingkungan.</h2></div>
+          <div><div class="s-kick">{{ home.text('about.kick') }}</div><h2 class="s-h2">{{ home.text('about.title') }}</h2></div>
           <RouterLink :to="route('profil')" class="s-more">Profil lengkap yayasan <ArrowRight :size="16" :stroke-width="2.3" aria-hidden="true" /></RouterLink>
         </div>
         <div class="yh-bento">
           <RouterLink :to="route('fasilitas')" class="s-tile yh-big-tile" :class="facilities.page.value?.items[0]?.image ? 's-tile--photo' : 's-tile--forest'">
-            <div v-if="facilities.page.value?.items[0]?.image" class="s-tile-bg"><SitePhoto :image="facilities.page.value.items[0].image" title="Fasilitas" sizes="(max-width: 640px) 100vw, 40vw" /></div>
+            <div v-if="facilities.page.value?.items[0]?.image" class="s-tile-bg"><SitePhoto :image="facilities.page.value.items[0].image" :title="home.text('about.fasilitasTitle')" sizes="(max-width: 640px) 100vw, 40vw" /></div>
             <span class="s-tile-arrow" aria-hidden="true"><ArrowUpRight :size="20" /></span>
-            <div><h3>Fasilitas</h3><p>Sarana belajar, asrama, dan lingkungan sekolah.</p></div>
+            <div><h3>{{ home.text('about.fasilitasTitle') }}</h3><p>{{ home.text('about.fasilitasText') }}</p></div>
           </RouterLink>
           <RouterLink :to="route('keasramaan')" class="s-tile s-tile--acc">
             <span class="s-tile-icon" aria-hidden="true"><BedDouble :size="24" /></span>
-            <div><h3>Keasramaan</h3><p>Kehidupan asrama, pembinaan ibadah, dan kegiatan harian santri.</p></div>
+            <div><h3>{{ home.text('about.keasramaanTitle') }}</h3><p>{{ home.text('about.keasramaanText') }}</p></div>
           </RouterLink>
           <RouterLink :to="route('guru')" class="s-tile s-tile--sun">
             <span class="s-tile-icon" aria-hidden="true"><UsersRound :size="24" /></span>
-            <div><h3>Guru &amp; staf</h3><p>Pendidik dan tenaga kependidikan.</p></div>
+            <div><h3>{{ home.text('about.guruTitle') }}</h3><p>{{ home.text('about.guruText') }}</p></div>
           </RouterLink>
           <RouterLink :to="route('prestasi')" class="s-tile s-tile--ink">
             <span class="s-tile-icon" aria-hidden="true"><Trophy :size="24" /></span>
-            <div><h3>Prestasi</h3><p>Capaian siswa SMP dan SMA.</p></div>
+            <div><h3>{{ home.text('about.prestasiTitle') }}</h3><p>{{ home.text('about.prestasiText') }}</p></div>
           </RouterLink>
           <RouterLink :to="route('dokumen')" class="s-tile s-tile--white">
             <span class="s-tile-icon" aria-hidden="true"><FileDown :size="24" /></span>
-            <div><h3>Download dokumen</h3><p>Brosur, formulir, dan berkas resmi.</p></div>
+            <div><h3>{{ home.text('about.dokumenTitle') }}</h3><p>{{ home.text('about.dokumenText') }}</p></div>
           </RouterLink>
         </div>
       </div>
     </section>
 
-    <section class="s-sec">
+    <section v-if="home.shown('news')" class="s-sec">
       <div class="s-wrap">
         <div class="s-head">
-          <div><div class="s-kick">Berita &amp; artikel</div><h2 class="s-h2">Kabar terbaru.</h2></div>
+          <div><div class="s-kick">{{ home.text('news.kick') }}</div><h2 class="s-h2">{{ home.text('news.title') }}</h2></div>
           <RouterLink :to="route('berita')" class="s-more">Semua berita <ArrowRight :size="16" :stroke-width="2.3" aria-hidden="true" /></RouterLink>
         </div>
         <div class="yh-news" :style="{ '--news': news.page.value?.items.length || 3 }">
@@ -206,10 +218,10 @@ const whatsapp = computed(() => (settings.value?.contact.whatsapp ? whatsappLink
       </div>
     </section>
 
-    <section v-if="gallery.page.value?.items.length" class="s-sec">
+    <section v-if="home.shown('gallery') && gallery.page.value?.items.length" class="s-sec">
       <div class="s-wrap">
         <div class="s-head">
-          <div><div class="s-kick">Galeri</div><h2 class="s-h2">Suasana Al Bashiroh.</h2></div>
+          <div><div class="s-kick">{{ home.text('gallery.kick') }}</div><h2 class="s-h2">{{ home.text('gallery.title') }}</h2></div>
           <RouterLink :to="route('galeri')" class="s-more">Buka galeri <ArrowRight :size="16" :stroke-width="2.3" aria-hidden="true" /></RouterLink>
         </div>
         <div class="yh-gal">
@@ -222,7 +234,7 @@ const whatsapp = computed(() => (settings.value?.contact.whatsapp ? whatsappLink
       </div>
     </section>
 
-    <PpdbBlock portal="yayasan" :whatsapp="whatsapp" />
+    <PpdbBlock v-if="home.shown('ppdb')" portal="yayasan" :kick="home.text('ppdb.kick')" :title="home.text('ppdb.title')" :text="home.text('ppdb.text')" :whatsapp="whatsapp" />
   </div>
 </template>
 

@@ -3,6 +3,7 @@ import { API_REFUSAL_CODES } from '../../shared/security/codes';
 import type { PermissionDeclaration } from '../../shared/security/permissions';
 import { permissionRules, type AccessRule } from '../../shared/security/access';
 import type { ActivityDeclaration } from '../../shared/security/activity';
+import { youtubeId } from './home';
 
 export const featureName = 'content' as const;
 export type FeatureName = typeof featureName;
@@ -400,11 +401,22 @@ const html = z.string().max(100_000, 'Isi terlalu panjang').default('');
 /** A link the public site puts in an href: http(s) only, so no javascript: or data: address reaches a page. */
 const webLink = text(300).refine((value) => value === '' || /^https?:\/\/[^\s/]+\.[^\s]+$/i.test(value), 'Tulis alamat lengkap, diawali https://');
 
+/** The profile video: a YouTube link, played on the home page from youtube-nocookie. */
+const videoLink = text(300).refine((value) => value === '' || youtubeId(value) !== null, 'Tulis tautan video YouTube, misalnya https://youtu.be/...');
+
 export const portalSettingsSchema = z.object({
   tagline: text(160),
   heroTitle: text(140),
   heroIntro: text(400),
   heroImageId: id.nullable().default(null),
+  video: z.object({ url: videoLink, posterId: id.nullable().default(null) }).default({ url: '', posterId: null }),
+  /** The home page's sections: which are taken off, and the texts written over their fallbacks (see `home.ts`). */
+  home: z
+    .object({
+      hidden: z.array(z.string().max(40)).max(40).default([]),
+      text: z.record(z.string().max(60), z.string().trim().max(600)).default({}),
+    })
+    .default({ hidden: [], text: {} }),
   accreditation: text(10),
   stats: z.array(z.object({ value: text(16), label: text(60) })).max(4, 'Paling banyak 4 angka').default([]),
   visi: text(400),

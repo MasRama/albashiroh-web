@@ -5,6 +5,7 @@ import App from '../App.vue';
 import router from '../router';
 import { app as serverApp } from '../server';
 import { useAuthSession } from '../../features/auth/web';
+import type { PortalSettings } from '../../features/content/web';
 import { seed } from '../../shared/database';
 import { closeEventStreams } from '../../shared/realtime';
 import { mergeResponseCookies } from '../../shared/security/tests/helpers';
@@ -155,15 +156,24 @@ describe('portal content in the admin', () => {
     type(field('Judul besar'), 'Wujudkan generasi bertaqwa dan berprestasi.');
     // A bare address gets its https:// as the editor saves.
     type(field('Instagram'), 'instagram.com/smpitalbashiroh');
+    // The home page: a profile video, a section's own heading, and a section taken off.
+    type(field('Tautan video YouTube'), 'https://youtu.be/abcdefghijk');
+    const news = [...container.querySelectorAll('.hs-item')].find((item) => item.querySelector('summary b')?.textContent === 'Berita dan agenda')!;
+    expect(news.querySelector<HTMLInputElement>('input')!.placeholder).toBe('Kabar SMP');
+    type(news.querySelectorAll<HTMLInputElement>('input')[1]!, 'Kabar dari kelas.');
+    container.querySelector<HTMLButtonElement>('[role="switch"][aria-label="Tampilkan bagian Tanya jawab"]')!.click();
     await settle();
+    expect(news.querySelector('summary small')?.textContent).toBe('1 teks diubah');
     container.querySelector<HTMLButtonElement>('form.ps button[type="submit"]')!.click();
     await settle();
 
     expect(container.textContent).toContain('Disimpan');
     expect(container.textContent).not.toContain('Ada perubahan yang belum disimpan');
-    const site = (await (await serverApp.request('/api/site/smp')).json()) as { data: { settings: { heroTitle: string; contact: { instagram: string } } } };
+    const site = (await (await serverApp.request('/api/site/smp')).json()) as { data: { settings: PortalSettings } };
     expect(site.data.settings.heroTitle).toBe('Wujudkan generasi bertaqwa dan berprestasi.');
     expect(site.data.settings.contact.instagram).toBe('https://instagram.com/smpitalbashiroh');
+    expect(site.data.settings.video.url).toBe('https://youtu.be/abcdefghijk');
+    expect(site.data.settings.home).toEqual({ hidden: ['faq'], text: { 'news.title': 'Kabar dari kelas.' } });
   });
 
   it('keeps an SMP editor out of the SMA portal', async () => {
