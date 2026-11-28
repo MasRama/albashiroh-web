@@ -48,18 +48,32 @@ const parts = computed(() => emphasize(props.title));
 
 <style scoped>
 .hero { padding-top: 110px; }
-.hero-box { position: relative; display: grid; min-height: 640px; grid-template-columns: 1.08fr 1fr; overflow: hidden; border-radius: 32px; background: var(--ab-forest); }
+/*
+ * On a laptop the whole block, headline to figures and the card over the
+ * photo, fits the first screen under the navbar, with its lower edge still
+ * in view: the height and the type follow the window's height as well as its
+ * width. A block whose text needs more room grows instead of clipping it.
+ */
+.hero-box {
+  position: relative;
+  display: grid;
+  min-height: clamp(500px, calc(100svh - 136px), 660px);
+  grid-template-columns: 1.2fr 1fr;
+  overflow: hidden;
+  border-radius: 32px;
+  background: var(--ab-forest);
+}
 .hero-box--dark { background: var(--ab-ink); }
-.hero-text { display: flex; flex-direction: column; padding: 76px 64px 56px; color: #fff; }
-.hero-text h1 { margin: 0; font-family: var(--ab-display); font-size: clamp(56px, 6.2vw, 84px); font-weight: 800; letter-spacing: -.035em; line-height: .98; overflow-wrap: anywhere; }
+.hero-text { display: flex; flex-direction: column; padding: clamp(36px, 7svh, 64px) clamp(40px, 4.4vw, 60px) clamp(28px, 5svh, 44px); color: #fff; }
+.hero-text h1 { margin: 0; font-family: var(--ab-display); font-size: clamp(42px, min(4.6vw, 7.4svh), 72px); font-weight: 800; letter-spacing: -.035em; line-height: .98; overflow-wrap: anywhere; }
 .hero-text h1 em { color: var(--ab-sun); font-style: normal; }
 .hero-box--dark h1 em { color: var(--acc); }
-.hero-text p { max-width: 520px; margin: 26px 0 0; color: rgba(255, 255, 255, .78); font-size: 19px; line-height: 1.6; }
-.hero-cta { display: flex; flex-wrap: wrap; gap: 12px; margin: 36px 0 48px; }
+.hero-text p { max-width: 520px; margin: clamp(14px, 2.8svh, 24px) 0 0; color: rgba(255, 255, 255, .78); font-size: clamp(16px, 2.5svh, 18.5px); line-height: 1.55; }
+.hero-cta { display: flex; flex-wrap: wrap; gap: 12px; margin: clamp(20px, 4svh, 34px) 0 clamp(22px, 4.4svh, 40px); }
 .hero-foot { display: flex; margin: auto 0 0; padding-top: 0; border-top: 1px solid rgba(255, 255, 255, .14); }
-.hero-foot div { display: flex; flex-direction: column-reverse; margin-right: 28px; padding: 22px 28px 0 0; border-right: 1px solid rgba(255, 255, 255, .14); }
+.hero-foot div { display: flex; flex-direction: column-reverse; margin-right: 28px; padding: clamp(14px, 2.6svh, 20px) 28px 0 0; border-right: 1px solid rgba(255, 255, 255, .14); }
 .hero-foot div:last-child { margin-right: 0; border-right: 0; }
-.hero-foot dd { margin: 0; font-family: var(--ab-display); font-size: 30px; font-weight: 800; letter-spacing: -.03em; line-height: 1; }
+.hero-foot dd { margin: 0; font-family: var(--ab-display); font-size: clamp(22px, 3.6svh, 28px); font-weight: 800; letter-spacing: -.03em; line-height: 1; }
 .hero-foot dt { margin-top: 4px; color: rgba(255, 255, 255, .66); font-size: 13.5px; font-weight: 600; }
 .hero-pic { position: relative; padding: 14px 14px 14px 0; }
 .hero-photo { height: 100%; overflow: hidden; border-radius: 22px; }

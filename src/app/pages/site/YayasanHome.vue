@@ -240,11 +240,11 @@ const whatsapp = computed(() => (settings.value?.contact.whatsapp ? whatsappLink
 
 <style scoped>
 .yh-lead { max-width: 420px; }
-.yh-tahfidz { position: absolute; bottom: 44px; left: -58px; display: block; width: 270px; padding: 22px 24px; border-radius: 20px; background: var(--ab-sma); color: #fff; }
-.yh-tahfidz-n { display: flex; align-items: baseline; gap: 8px; font-family: var(--ab-display); font-weight: 800; }
-.yh-tahfidz-n b { font-size: 64px; letter-spacing: -.05em; line-height: .85; }
-.yh-tahfidz-n span { font-size: 24px; }
-.yh-tahfidz-t { display: block; margin-top: 10px; font-size: 14.5px; font-weight: 600; line-height: 1.4; }
+.yh-tahfidz { position: absolute; bottom: clamp(28px, 5svh, 40px); left: -48px; display: block; width: 236px; padding: 18px 20px; border-radius: 18px; background: var(--ab-sma); color: #fff; }
+.yh-tahfidz-n { display: flex; align-items: baseline; gap: 7px; font-family: var(--ab-display); font-weight: 800; }
+.yh-tahfidz-n b { font-size: 52px; letter-spacing: -.05em; line-height: .85; }
+.yh-tahfidz-n span { font-size: 20px; }
+.yh-tahfidz-t { display: block; margin-top: 8px; font-size: 13.5px; font-weight: 600; line-height: 1.4; }
 
 .yh-portals { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 .yh-portal { display: grid; min-height: 400px; grid-template-columns: 1fr 210px; overflow: hidden; border-radius: 28px; color: #fff; }
