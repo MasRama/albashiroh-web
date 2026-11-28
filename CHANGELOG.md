@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.2.0](https://github.com/MasRama/albashiroh-web/compare/v0.1.0...v0.2.0) (2026-11-28)
+
+
+### Features
+
+* **content:** profile video and admin-edited home page sections ([#17](https://github.com/MasRama/albashiroh-web/issues/17)) ([7ee2486](https://github.com/MasRama/albashiroh-web/commit/7ee24863b2da66f820acdea00a495f9bbda61aba))
+* **site:** Yayasan logo, and each portal named as itself ([#20](https://github.com/MasRama/albashiroh-web/issues/20)) ([c1747f2](https://github.com/MasRama/albashiroh-web/commit/c1747f208e73686b854929a9973d920ef60b7b9c))
+
+
+### Bug Fixes
+
+* **site:** fit the home hero in the first screen on a laptop ([#19](https://github.com/MasRama/albashiroh-web/issues/19)) ([a92b710](https://github.com/MasRama/albashiroh-web/commit/a92b710a014aed3f697a98f0823a4ca5853b3806))
+* **site:** keep the space in the navbar's Daftar PPDB button ([#21](https://github.com/MasRama/albashiroh-web/issues/21)) ([cf15b2c](https://github.com/MasRama/albashiroh-web/commit/cf15b2c610ee060b456f2bacc477dabb11f9fcce))
+
 ## 0.1.0 (2026-11-20)
 
 
