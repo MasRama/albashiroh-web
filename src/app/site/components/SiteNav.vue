@@ -125,7 +125,8 @@ onBeforeUnmount(() => {
         </div>
         <RouterLink v-else :to="{ name: 'home' }" class="sn-back"><ArrowLeft :size="14" :stroke-width="2.4" aria-hidden="true" />Yayasan</RouterLink>
 
-        <RouterLink :to="ppdb" class="sn-ppdb"><span class="sn-ppdb-verb">Daftar </span>PPDB</RouterLink>
+        <!-- A no-break space: a plain one at the end of the span is dropped in the flex row, giving "DaftarPPDB". -->
+        <RouterLink :to="ppdb" class="sn-ppdb"><span class="sn-ppdb-verb">Daftar&nbsp;</span>PPDB</RouterLink>
         <button type="button" class="sn-burger" :aria-expanded="sheet" aria-controls="site-menu" :aria-label="sheet ? 'Tutup menu' : 'Buka menu'" @click.stop="sheet = !sheet">
           <X v-if="sheet" :size="20" aria-hidden="true" />
           <Menu v-else :size="20" aria-hidden="true" />
