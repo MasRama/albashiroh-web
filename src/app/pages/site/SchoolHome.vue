@@ -264,11 +264,11 @@ const shownAlumni = computed(() => (home.shown('alumni') ? alumni.page.value?.it
 </template>
 
 <style scoped>
-.sh-card { position: absolute; bottom: 44px; left: -58px; display: flex; width: 300px; align-items: center; gap: 16px; padding: 20px 22px; border-radius: 20px; background: var(--acc); color: #fff; }
-.sh-card-logo { display: grid; width: 58px; height: 58px; flex: none; place-items: center; padding: 9px; border-radius: 16px; background: #fff; }
+.sh-card { position: absolute; bottom: clamp(28px, 5svh, 40px); left: -48px; display: flex; width: 272px; align-items: center; gap: 14px; padding: 16px 18px; border-radius: 18px; background: var(--acc); color: #fff; }
+.sh-card-logo { display: grid; width: 50px; height: 50px; flex: none; place-items: center; padding: 8px; border-radius: 14px; background: #fff; }
 .sh-card-logo img { width: 100%; height: 100%; object-fit: contain; }
 .sh-card small { display: block; font-size: 11.5px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; opacity: .85; }
-.sh-card b { display: block; margin-top: 4px; font-family: var(--ab-display); font-size: 19px; font-weight: 800; letter-spacing: -.02em; line-height: 1.15; }
+.sh-card b { display: block; margin-top: 4px; font-family: var(--ab-display); font-size: 17px; font-weight: 800; letter-spacing: -.02em; line-height: 1.15; }
 
 .sh-head { display: grid; grid-template-columns: 400px 1fr; overflow: hidden; border: 1px solid var(--ab-line); border-radius: 28px; background: #fff; }
 .sh-head-photo { position: relative; min-height: 480px; background: var(--ab-paper-2); }
