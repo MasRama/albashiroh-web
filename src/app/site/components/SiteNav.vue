@@ -93,7 +93,7 @@ onBeforeUnmount(() => {
           <BrandMark v-if="portal === 'yayasan'" />
           <template v-else>
             <span class="sn-logo"><img :src="LOGO[portal]" alt="" width="40" height="40" /></span>
-            <span class="sn-name"><b>{{ names.short }}</b><small>Turen · Yayasan Bashiroh Robbaniyah</small></span>
+            <span class="sn-name"><b>{{ names.short }}</b><small>Turen, Malang</small></span>
           </template>
         </RouterLink>
 
@@ -125,7 +125,7 @@ onBeforeUnmount(() => {
         </div>
         <RouterLink v-else :to="{ name: 'home' }" class="sn-back"><ArrowLeft :size="14" :stroke-width="2.4" aria-hidden="true" />Yayasan</RouterLink>
 
-        <RouterLink :to="ppdb" class="sn-ppdb">Daftar PPDB</RouterLink>
+        <RouterLink :to="ppdb" class="sn-ppdb"><span class="sn-ppdb-verb">Daftar </span>PPDB</RouterLink>
         <button type="button" class="sn-burger" :aria-expanded="sheet" aria-controls="site-menu" :aria-label="sheet ? 'Tutup menu' : 'Buka menu'" @click.stop="sheet = !sheet">
           <X v-if="sheet" :size="20" aria-hidden="true" />
           <Menu v-else :size="20" aria-hidden="true" />
@@ -223,11 +223,16 @@ onBeforeUnmount(() => {
 .sn-portal--smp { background: var(--ab-smp); }
 .sn-portal--sma { background: var(--ab-sma); }
 
-/* The full menu fits from about 1180px; below that, the sheet takes over. */
+/* The full menu fits from about 1180px (1280px for a school's longer one); below that, the sheet takes over. */
 @media (max-width: 1179px) {
   .sn-links, .sn-seg, .sn-back { display: none; }
   .sn-ppdb { margin-left: auto; }
   .sn-burger { display: grid; }
+}
+@media (max-width: 1279px) {
+  .sn--smp .sn-links, .sn--smp .sn-back, .sn--sma .sn-links, .sn--sma .sn-back { display: none; }
+  .sn--smp .sn-ppdb, .sn--sma .sn-ppdb { margin-left: auto; }
+  .sn--smp .sn-burger, .sn--sma .sn-burger { display: grid; }
 }
 @media (max-width: 640px) {
   .sn { top: 12px; }
@@ -235,11 +240,16 @@ onBeforeUnmount(() => {
   .sn-bar { height: 62px; gap: 8px; padding: 0 8px 0 12px; border-radius: 18px; }
   .sn-brand { gap: 8px; }
   .sn-brand :deep(.brand-text small), .sn-name small { display: none; }
-  .sn-brand :deep(.brand-mark) { width: 34px; height: 34px; font-size: 13px; }
-  .sn-brand :deep(.brand-text b) { font-size: 18px; }
+  .sn-brand :deep(.brand-mark) { height: 32px; }
+  /* The Yayasan's long name takes two lines on a phone, breaking after "Bashiroh". */
+  .sn-brand :deep(.brand-text b) { font-size: 14px; line-height: 1.1; }
   .sn-logo { width: 34px; height: 34px; padding: 5px; }
-  .sn-name b { font-size: 15px; }
+  .sn-name b { font-size: 14px; line-height: 1.1; white-space: normal; }
   .sn-ppdb { height: 40px; padding: 0 12px; font-size: 13px; }
   .sn-burger { width: 40px; height: 40px; }
+}
+/* On the narrowest phones the button says just "PPDB", leaving the name its two lines. */
+@media (max-width: 400px) {
+  .sn-ppdb-verb { display: none; }
 }
 </style>

@@ -81,7 +81,8 @@ const whatsapp = computed(() => (settings.value?.contact.whatsapp ? whatsappLink
       :intro="settings?.heroIntro || `Yayasan Bashiroh Robbaniyah menaungi SMP IT dan SMA IT Al Bashiroh di Turen, dengan program unggulan Takhosus Al-Qur'an 30 juz dan kehidupan asrama.`"
       :stats="stats"
       :image="portalImage(yayasan, settings?.heroImageId)"
-      cover-title="Al Bashiroh"
+      cover-title="Yayasan Bashiroh Robbaniyah"
+      :cover-logo="LOGO.yayasan"
     >
       <template #actions>
         <RouterLink :to="route('ppdb')" class="s-btn s-btn--or">{{ home.text('hero.primary') }} <ArrowRight :size="17" :stroke-width="2.3" aria-hidden="true" /></RouterLink>

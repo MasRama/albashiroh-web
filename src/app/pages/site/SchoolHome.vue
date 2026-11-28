@@ -81,6 +81,7 @@ const shownAlumni = computed(() => (home.shown('alumni') ? alumni.page.value?.it
       :stats="stats"
       :image="portalImage(data, settings?.heroImageId)"
       :cover-title="names.short"
+      :cover-logo="LOGO[portal]"
       :dark="portal === 'sma'"
     >
       <template #actions>

@@ -13,7 +13,7 @@ import {
   type SiteListQuery,
   type SitePortalData,
 } from '../../features/content/web';
-import { SITE_PORTAL_NAMES, type SitePortal } from '../site-map';
+import { SITE_PORTAL_NAMES, YAYASAN_HOME_TITLE, type SitePortal } from '../site-map';
 
 /**
  * What every public page shares: the site client, cached portal settings,
@@ -30,7 +30,7 @@ export const TONE: Record<Tone, { accent: string; deep: string; name: string }> 
   sma: { accent: 'var(--ab-sma)', deep: 'var(--ab-sma-deep)', name: 'SMA' },
 };
 
-export const LOGO: Partial<Record<Portal, string>> = { smp: '/brand/logo-smp.png', sma: '/brand/logo-sma.png' };
+export const LOGO: Record<Portal, string> = { yayasan: '/brand/logo-yayasan.png', smp: '/brand/logo-smp.png', sma: '/brand/logo-sma.png' };
 
 // Settings change rarely; a visitor moving between pages reads them once a minute at most.
 const SETTINGS_TTL = 60_000;
@@ -155,7 +155,7 @@ export function useTitle(title: () => string | null): void {
 export function pageTitle(portal: SitePortal, label: string | null, settings?: PortalSettings | null): string {
   const names = SITE_PORTAL_NAMES[portal];
   if (label) return `${label} | ${names.name}`;
-  if (portal === 'yayasan') return 'Al Bashiroh | Yayasan Bashiroh Robbaniyah';
+  if (portal === 'yayasan') return YAYASAN_HOME_TITLE;
   return `${names.name}${settings?.tagline ? ` | ${settings.tagline}` : ''}`;
 }
 

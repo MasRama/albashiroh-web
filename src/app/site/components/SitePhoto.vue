@@ -17,6 +17,8 @@ withDefaults(
     eager?: boolean;
     /** How big the title is set in the empty block. */
     scale?: 's' | 'm' | 'l';
+    /** A logo for the empty block's corner, on a white tile, in place of the initials. */
+    logo?: string;
   }>(),
   { tone: 'forest', sizes: '(max-width: 640px) 100vw, 50vw', eager: false, scale: 'm' },
 );
@@ -36,7 +38,8 @@ withDefaults(
     decoding="async"
   />
   <div v-else class="sp sp--cover" :class="[`sp--${tone}`, `sp--${scale}`]" role="img" :aria-label="title">
-    <span class="sp-mark" aria-hidden="true">AB</span>
+    <span v-if="logo" class="sp-mark sp-mark--logo" aria-hidden="true"><img :src="logo" alt="" /></span>
+    <span v-else class="sp-mark" aria-hidden="true">AB</span>
     <span class="sp-title" aria-hidden="true">{{ title }}</span>
   </div>
 </template>
@@ -75,6 +78,8 @@ withDefaults(
   letter-spacing: -.02em;
 }
 .sp--sun .sp-mark, .sp--paper .sp-mark { background: rgba(19, 33, 26, .1); }
+.sp-mark--logo, .sp--sun .sp-mark--logo, .sp--paper .sp-mark--logo { display: block; width: auto; height: auto; padding: 8px 11px; border-radius: 14px; background: #fff; }
+.sp-mark--logo img { display: block; width: auto; height: 40px; }
 .sp-title {
   display: -webkit-box;
   overflow: hidden;
@@ -89,5 +94,5 @@ withDefaults(
 }
 .sp--s .sp-title { font-size: clamp(17px, 2.2vw, 22px); -webkit-line-clamp: 3; line-clamp: 3; }
 .sp--m .sp-title { font-size: clamp(22px, 3vw, 34px); }
-.sp--l .sp-title { font-size: clamp(34px, 5.4vw, 72px); }
+.sp--l .sp-title { font-size: clamp(32px, 4.2vw, 60px); }
 </style>

@@ -17,6 +17,8 @@ const props = defineProps<{
   image: EntryImage | null;
   /** The solid block's text when there is no photo. */
   coverTitle: string;
+  /** The portal's logo on the solid block. */
+  coverLogo: string;
   dark?: boolean;
 }>();
 const parts = computed(() => emphasize(props.title));
@@ -38,7 +40,7 @@ const parts = computed(() => emphasize(props.title));
           </dl>
         </div>
         <div class="hero-pic">
-          <div class="hero-photo"><SitePhoto :image="image" :title="coverTitle" tone="sun" scale="l" sizes="(max-width: 640px) 100vw, 48vw" eager /></div>
+          <div class="hero-photo"><SitePhoto :image="image" :title="coverTitle" :logo="coverLogo" tone="sun" scale="l" sizes="(max-width: 640px) 100vw, 48vw" eager /></div>
           <slot name="card" />
         </div>
       </div>
@@ -64,7 +66,7 @@ const parts = computed(() => emphasize(props.title));
 .hero-pic { position: relative; padding: 14px 14px 14px 0; }
 .hero-photo { height: 100%; overflow: hidden; border-radius: 22px; }
 /* With no photo yet, the block's title sits at the top: the card over the photo's lower corner would hide it. */
-.hero-photo :deep(.sp--cover) { justify-content: flex-start; padding-top: calc(clamp(14px, 6%, 26px) + 52px); }
+.hero-photo :deep(.sp--cover) { justify-content: flex-start; padding-top: calc(clamp(14px, 6%, 26px) + 76px); }
 @media (max-width: 960px) {
   .hero-box { min-height: 0; grid-template-columns: 1fr; }
   .hero-text { padding: 56px 40px 36px; }

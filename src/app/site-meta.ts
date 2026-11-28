@@ -1,5 +1,5 @@
 import { plainText, type SiteReader } from '../features/content';
-import { matchSitePath, SITE_PORTAL_NAMES, sitePages, sitePath, type SitePortal } from './site-map';
+import { matchSitePath, SITE_NAME, SITE_PORTAL_NAMES, sitePages, sitePath, YAYASAN_HOME_TITLE, type SitePortal } from './site-map';
 
 /**
  * What the server writes into the page shell before the browser runs, so
@@ -34,11 +34,11 @@ export function describePage(pathname: string, reader: SiteReader, origin: strin
   const absolute = (path: string) => `${origin}${path}`;
   const fallbackImage = absolute(SHARE_IMAGE);
   if (isAdmin(pathname)) {
-    return { status: 200, title: 'Panel admin | Al Bashiroh', description: SITE_DESCRIPTION, canonical: null, image: fallbackImage, type: 'website', index: false };
+    return { status: 200, title: `Panel admin | ${SITE_NAME}`, description: SITE_DESCRIPTION, canonical: null, image: fallbackImage, type: 'website', index: false };
   }
   const notFound: PageMeta = {
     status: 404,
-    title: 'Halaman tidak ditemukan | Al Bashiroh',
+    title: `Halaman tidak ditemukan | ${SITE_NAME}`,
     description: SITE_DESCRIPTION,
     canonical: null,
     image: fallbackImage,
@@ -72,7 +72,7 @@ export function describePage(pathname: string, reader: SiteReader, origin: strin
   const home = page.key === 'home';
   return {
     status: 200,
-    title: home ? (portal === 'yayasan' ? 'Al Bashiroh | Yayasan Bashiroh Robbaniyah' : `${names.name}${settings.tagline ? ` | ${settings.tagline}` : ''}`) : `${page.label} | ${names.name}`,
+    title: home ? (portal === 'yayasan' ? YAYASAN_HOME_TITLE : `${names.name}${settings.tagline ? ` | ${settings.tagline}` : ''}`) : `${page.label} | ${names.name}`,
     description: home ? portalDescription : page.description.replaceAll('{name}', names.name),
     canonical: absolute(sitePath(portal, page.path)),
     image: portalImage,
@@ -92,7 +92,7 @@ export function renderShell(template: string, meta: PageMeta): string {
     tag('name', 'description', meta.description),
     meta.index ? '' : tag('name', 'robots', 'noindex'),
     meta.canonical ? `<link rel="canonical" href="${escapeHtml(meta.canonical)}">` : '',
-    tag('property', 'og:site_name', 'Al Bashiroh'),
+    tag('property', 'og:site_name', SITE_NAME),
     tag('property', 'og:locale', 'id_ID'),
     tag('property', 'og:type', meta.type),
     tag('property', 'og:title', meta.title),

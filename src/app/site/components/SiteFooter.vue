@@ -65,7 +65,7 @@ const others = computed(() => (['yayasan', 'smp', 'sma'] as const).filter((porta
             <BrandMark v-if="portal === 'yayasan'" tone="light" />
             <span v-else class="sf-school">
               <span class="sf-logo"><img :src="LOGO[portal]" alt="" width="40" height="40" loading="lazy" /></span>
-              <span><b>{{ names.short }}</b><small>Turen · Yayasan Bashiroh Robbaniyah</small></span>
+              <span><b>{{ names.short }}</b><small>Turen, Malang</small></span>
             </span>
           </RouterLink>
           <ul v-if="contact" class="sf-contact">
