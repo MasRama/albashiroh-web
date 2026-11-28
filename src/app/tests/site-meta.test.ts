@@ -67,7 +67,7 @@ describe('page meta', () => {
   it('describes the Yayasan home and a school home from its settings', () => {
     expect(describePage('/', reader(), ORIGIN)).toEqual({
       status: 200,
-      title: 'Al Bashiroh | Yayasan Bashiroh Robbaniyah',
+      title: 'Yayasan Bashiroh Robbaniyah | SMP IT dan SMA IT Al Bashiroh Turen',
       description: SITE_DESCRIPTION,
       canonical: `${ORIGIN}/`,
       image: `${ORIGIN}/brand/og.png`,
@@ -101,11 +101,11 @@ describe('page meta', () => {
     for (const path of ['/tidak-ada', '/smp/berita/draf-rahasia', '/sma/alumni/siapa']) {
       expect(describePage(path, reader(), ORIGIN), path).toMatchObject({ status: 404, index: false, canonical: null });
     }
-    expect(describePage('/admin/smp', reader(), ORIGIN)).toMatchObject({ status: 200, index: false, title: 'Panel admin | Al Bashiroh' });
+    expect(describePage('/admin/smp', reader(), ORIGIN)).toMatchObject({ status: 200, index: false, title: 'Panel admin | Yayasan Bashiroh Robbaniyah' });
   });
 
   it('writes the meta into the shell, escaped', () => {
-    const shell = '<html><head>\n    <title>Al Bashiroh</title>\n</head><body><div id="app"></div></body></html>';
+    const shell = '<html><head>\n    <title>Yayasan Bashiroh Robbaniyah</title>\n</head><body><div id="app"></div></body></html>';
     const html = renderShell(shell, { ...describePage('/smp/berita/wisuda-tahfidz', reader(), ORIGIN), title: 'Juara "1" <Silat> & Pidato' });
     expect(html).toContain('<title>Juara &quot;1&quot; &lt;Silat&gt; &amp; Pidato</title>');
     expect(html).toContain('<meta property="og:title" content="Juara &quot;1&quot; &lt;Silat&gt; &amp; Pidato">');

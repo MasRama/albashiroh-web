@@ -47,8 +47,13 @@ export const SITE_PAGES = [
 
 export type SitePageKey = (typeof SITE_PAGES)[number]['key'];
 
+/** The name the site goes by: the Yayasan's, whose domain carries both schools. */
+export const SITE_NAME = 'Yayasan Bashiroh Robbaniyah';
+/** The Yayasan home's tab title: its name, then the two schools people search for. */
+export const YAYASAN_HOME_TITLE = `${SITE_NAME} | SMP IT dan SMA IT Al Bashiroh Turen`;
+
 export const SITE_PORTAL_NAMES: Record<SitePortal, { name: string; short: string }> = {
-  yayasan: { name: 'Yayasan Bashiroh Robbaniyah', short: 'Al Bashiroh' },
+  yayasan: { name: SITE_NAME, short: SITE_NAME },
   smp: { name: 'SMP IT Al Bashiroh Turen', short: 'SMP IT Al Bashiroh' },
   sma: { name: 'SMA IT Al Bashiroh Turen', short: 'SMA IT Al Bashiroh' },
 };
